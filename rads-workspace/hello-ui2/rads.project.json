@@ -203,10 +203,10 @@
           "id": "6e721bb6-cb55-4530-8da3-1e71280f682c",
           "kind": "button",
           "name": "button1",
-          "caption": "Button",
+          "caption": "Okay",
           "geometry": {
-            "x": 88,
-            "y": 96,
+            "x": 360,
+            "y": 24,
             "w": 120,
             "h": 34
           },
@@ -237,8 +237,8 @@
           "name": "checkbox1",
           "caption": "Check me",
           "geometry": {
-            "x": 168,
-            "y": 168,
+            "x": 576,
+            "y": 216,
             "w": 160,
             "h": 30
           },
@@ -269,8 +269,8 @@
           "name": "textbox1",
           "caption": "Text Box",
           "geometry": {
-            "x": 168,
-            "y": 324,
+            "x": 576,
+            "y": 264,
             "w": 180,
             "h": 32
           },

@@ -384,8 +384,8 @@ Response:
 
 ### `GET /api/events`
 
-Streams job updates as server-sent events. Each event has type `job` and JSON
-event data.
+Streams job and project-file updates as server-sent events. Job events have type
+`job`; active-project filesystem changes have type `project-file`.
 
 ```json
 {
@@ -393,6 +393,17 @@ event data.
   "status": "running",
   "line": "started",
   "at": "2026-05-08T00:00:01Z"
+}
+```
+
+Project-file event data:
+
+```json
+{
+  "project": "/path/to/rads-workspace/hello-ui2",
+  "paths": ["src/lib.rs"],
+  "kind": "create",
+  "at_unix_ms": 1778219000000
 }
 ```
 

@@ -8,9 +8,9 @@ window MainWindow caption "Hello UI2" at 60,60 size 960x640 {
   label titleLabel at 24,24 size 220x28 caption "Canvas workspace" props [role="heading"] events [ready -> on_title_label_ready]
   button clearButton at 812,22 size 96x34 caption "Clear" props [variant="secondary"] events [click -> on_clear_button_click]
   canvas drawingCanvas at 24,72 size 884x520 caption "" props [surface="software", background="#ffffff"] events [draw -> on_drawing_canvas_draw]
-  button button1 at 88,96 size 120x34 caption "Button" props [enabled="true", default="false", tab-stop="true"] events [click -> on_button1_click]
-  checkbox checkbox1 at 168,168 size 160x30 caption "Check me" props [checked="false", enabled="true", tab-stop="true"] events [click -> on_checkbox1_click]
-  textbox textbox1 at 168,324 size 180x32 caption "Text Box" props [placeholder="", read-only="false", max-length="0", tab-stop="true"] events [change -> on_textbox1_change]
+  button button1 at 360,24 size 120x34 caption "Okay" props [enabled="true", default="false", tab-stop="true"] events [click -> on_button1_click]
+  checkbox checkbox1 at 576,216 size 160x30 caption "Check me" props [checked="false", enabled="true", tab-stop="true"] events [click -> on_checkbox1_click]
+  textbox textbox1 at 576,264 size 180x32 caption "Text Box" props [placeholder="", read-only="false", max-length="0", tab-stop="true"] events [change -> on_textbox1_change]
   label label1 at 180,288 size 160x24 caption "Label" props [auto-size="true", text-align="left", font-weight="normal"] events [ready -> on_label1_ready]
 }
 

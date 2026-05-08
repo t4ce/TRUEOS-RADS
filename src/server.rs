@@ -27,6 +27,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::UNIX_EPOCH;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
+use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::RecvError;
 use tower_http::services::ServeDir;
 
@@ -37,6 +38,8 @@ pub struct AppState {
     active: Arc<Mutex<Option<RadsProject>>>,
     runtime: Arc<Mutex<RuntimeState>>,
     full_auto: Arc<AtomicBool>,
+    project_events: broadcast::Sender<watcher::ProjectFileEvent>,
+    project_file_watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
 }
 
 struct RuntimeState {
@@ -205,6 +208,7 @@ pub struct ProjectTemplateSummary {
 }
 
 pub async fn serve(workspace: PathBuf) -> anyhow::Result<()> {
+    let (project_events, _) = broadcast::channel(512);
     let state = AppState {
         workspace: workspace.join("rads-workspace"),
         jobs: JobManager::new(),
@@ -215,6 +219,8 @@ pub async fn serve(workspace: PathBuf) -> anyhow::Result<()> {
             watcher: None,
         })),
         full_auto: Arc::new(AtomicBool::new(true)),
+        project_events,
+        project_file_watcher: Arc::new(Mutex::new(None)),
     };
     tokio::fs::create_dir_all(&state.workspace)
         .await
@@ -565,6 +571,7 @@ async fn new_project(
     }
     .map_err(|err| err.to_string())?;
     *state.active.lock().await = Some(project.clone());
+    refresh_project_file_watch(&state, Some(project.root.clone())).await?;
     refresh_watch(&state, Some(project.root.clone())).await?;
     Ok(Json(NewProjectResponse { project }))
 }
@@ -656,6 +663,7 @@ async fn load_project(
     }
 
     *state.active.lock().await = Some(project.clone());
+    refresh_project_file_watch(&state, Some(project.root.clone())).await?;
     refresh_watch(&state, Some(project.root.clone())).await?;
     Ok(Json(ProjectResponse { project }))
 }
@@ -1003,6 +1011,32 @@ async fn refresh_watch(state: &AppState, project: Option<PathBuf>) -> Result<(),
     Ok(())
 }
 
+async fn refresh_project_file_watch(
+    state: &AppState,
+    project: Option<PathBuf>,
+) -> Result<(), String> {
+    *state.project_file_watcher.lock().await = None;
+
+    let watcher = if let Some(project) = project {
+        Some(
+            watcher::watch_project_files(project.clone(), state.project_events.clone())
+                .await
+                .map_err(|err| {
+                    format!(
+                        "failed to watch project files in {}: {err}",
+                        project.display()
+                    )
+                })?,
+        )
+    } else {
+        None
+    };
+
+    *state.project_file_watcher.lock().await = watcher;
+
+    Ok(())
+}
+
 async fn set_watch(
     state: &AppState,
     enabled: bool,
@@ -1290,8 +1324,9 @@ async fn run_job(
 async fn events(
     State(state): State<AppState>,
 ) -> Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>> {
-    let rx = state.jobs.subscribe();
-    let stream = futures_util::stream::unfold(rx, |mut rx| async {
+    let job_rx = state.jobs.subscribe();
+    let project_rx = state.project_events.subscribe();
+    let job_stream = futures_util::stream::unfold(job_rx, |mut rx| async {
         loop {
             match rx.recv().await {
                 Ok(event) => {
@@ -1303,5 +1338,18 @@ async fn events(
             }
         }
     });
+    let project_stream = futures_util::stream::unfold(project_rx, |mut rx| async {
+        loop {
+            match rx.recv().await {
+                Ok(event) => {
+                    let payload = serde_json::to_string(&event).unwrap_or_default();
+                    return Some((Ok(Event::default().event("project-file").data(payload)), rx));
+                }
+                Err(RecvError::Lagged(_)) => continue,
+                Err(RecvError::Closed) => return None,
+            }
+        }
+    });
+    let stream = futures_util::stream::select(job_stream, project_stream);
     Sse::new(stream).keep_alive(KeepAlive::default())
 }

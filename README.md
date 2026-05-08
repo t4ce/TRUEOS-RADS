@@ -36,6 +36,9 @@ RADS also exposes `TRUEOS_RADS_PROJECT_*` environment variables to the process.
 The Localcoder Tools tab is backed by `/api/localcoder/status`; Git is currently
 reported as available through the Bash tool rather than as a dedicated model
 function.
+RADS also watches the active project for external file changes and broadcasts
+them through `/api/events` as `project-file` events so editors can refresh after
+localcoder writes files.
 
 ## Shape
 

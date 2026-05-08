@@ -34,6 +34,8 @@ const state = {
   unavailableRoutes: new Set(),
   autoTimer: null,
   uiPersistTimer: null,
+  fileRefreshTimer: null,
+  pendingFileChangePaths: [],
   drag: null,
   newProjectOpen: false,
   openProjectOpen: false,
@@ -161,9 +163,89 @@ function connectEvents() {
     state.logs.push(`[${payload.status}] ${payload.line}`);
     refreshJobs().finally(render);
   });
+  source.addEventListener("project-file", (event) => {
+    handleProjectFileEvent(JSON.parse(event.data));
+  });
   source.addEventListener("error", () => {
     state.backendOnline = false;
   });
+}
+
+function handleProjectFileEvent(payload) {
+  const paths = normalizeProjectFileEventPaths(payload);
+  if (!paths.length) return;
+
+  state.pendingFileChangePaths = Array.from(new Set([
+    ...state.pendingFileChangePaths,
+    ...paths,
+  ]));
+  state.logs.push(`Project files changed: ${summarizePaths(paths)}`);
+  window.clearTimeout(state.fileRefreshTimer);
+  state.fileRefreshTimer = window.setTimeout(refreshChangedProjectFiles, 350);
+  render();
+}
+
+function normalizeProjectFileEventPaths(payload) {
+  const paths = Array.isArray(payload?.paths) ? payload.paths : [];
+  return paths
+    .map((path) => String(path || "").replace(/\\/g, "/"))
+    .filter(Boolean);
+}
+
+function summarizePaths(paths) {
+  const visible = paths.slice(0, 3).join(", ");
+  return paths.length > 3 ? `${visible}, +${paths.length - 3}` : visible;
+}
+
+async function refreshChangedProjectFiles() {
+  if (!state.project) return;
+  const paths = state.pendingFileChangePaths.splice(0);
+  if (!paths.length) return;
+
+  try {
+    const reloadProject = paths.some(isProjectModelPath);
+    const reloadRust = paths.some((path) => path.endsWith(".rs"));
+    const reloadAssets = paths.some((path) => path.startsWith("assets/"));
+
+    if (reloadProject) {
+      await reloadActiveProjectFromDisk();
+    }
+    if (reloadRust) {
+      await loadRustFilesForProject();
+    }
+    if (reloadAssets) {
+      await loadAssetsForProject();
+    }
+    await refreshProjects();
+  } catch (error) {
+    state.logs.push(`Project file refresh failed; ${shortError(error)}`);
+  }
+  render();
+}
+
+function isProjectModelPath(path) {
+  return path === "rads.project.json"
+    || path === "app.blueprint.json"
+    || path === "package/package.blueprint.json"
+    || path.startsWith("ui/");
+}
+
+async function reloadActiveProjectFromDisk() {
+  if (!state.project?.root) return;
+  const selectedWindowId = state.selectedWindowId;
+  const selectedControlId = state.selectedControlId;
+  const response = await api("/api/project/load", {
+    method: "POST",
+    body: JSON.stringify({ path: state.project.root }),
+  });
+  state.project = response.project;
+  state.selectedWindowId = state.project.windows?.some((window) => window.id === selectedWindowId)
+    ? selectedWindowId
+    : state.project.windows?.[0]?.id || null;
+  state.selectedControlId = selectedControlId && selectedWindow()?.controls?.some((control) => control.id === selectedControlId)
+    ? selectedControlId
+    : null;
+  hydrateUiSourcesForWindow();
 }
 
 function openNewProject() {

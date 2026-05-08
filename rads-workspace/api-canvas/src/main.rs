@@ -1,6 +1,8 @@
 mod events;
 mod ui;
 
+pub mod lib;
+
 fn main() {
     let windows = ui::create_all_windows();
     if windows.is_empty() {

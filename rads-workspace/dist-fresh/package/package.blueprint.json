@@ -1,0 +1,36 @@
+{
+  "schema": "trueos.package.blueprint/v1",
+  "package_id": "dev.trueos.dist-fresh.package",
+  "app_id": "dev.trueos.dist-fresh",
+  "name": "dist-fresh",
+  "version": "0.1.0",
+  "entrypoint": "src/main.rs",
+  "artifacts": [
+    {
+      "kind": "binary",
+      "path": "target/trueos/app.tapp",
+      "target": "trueos-ui2"
+    },
+    {
+      "kind": "layout",
+      "path": "ui/main.ui2",
+      "target": "ui2-layout"
+    },
+    {
+      "kind": "html",
+      "path": "ui/index.html",
+      "target": "ui2-markup"
+    },
+    {
+      "kind": "stylesheet",
+      "path": "ui/styles.css",
+      "target": "ui2-style"
+    }
+  ],
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "ui_runtime": "TRUEOS/UI2",
+    "schema_version": "0.1"
+  }
+}

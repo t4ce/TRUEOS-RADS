@@ -1,0 +1,42 @@
+{
+  "schema": "trueos.app.blueprint/v1",
+  "app_id": "dev.trueos.rads-multiwindow-demo-1778201281",
+  "slug": "rads-multiwindow-demo-1778201281",
+  "display_name": "RADS Multiwindow Demo 1778201281",
+  "version": "0.1.0",
+  "entrypoint": "src/main.rs",
+  "ui_layout": "ui/main.ui2",
+  "description": "RADS Multiwindow Demo 1778201281 generated from the UI2 App Form App template.",
+  "license": "MIT OR Apache-2.0",
+  "authors": [
+    "TRUEOS RADS"
+  ],
+  "capabilities": [
+    {
+      "key": "ui2.window",
+      "enabled": true,
+      "note": "Create and manage UI2 windows"
+    },
+    {
+      "key": "ui2.events",
+      "enabled": true,
+      "note": "Bind generated UI2 event handlers"
+    },
+    {
+      "key": "fs.user",
+      "enabled": false,
+      "note": "Read and write user-selected files"
+    },
+    {
+      "key": "net.client",
+      "enabled": false,
+      "note": "Open outbound network connections"
+    }
+  ],
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "ui_runtime": "TRUEOS/UI2",
+    "schema_version": "0.1"
+  }
+}

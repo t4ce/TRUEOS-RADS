@@ -1,0 +1,108 @@
+{
+  "id": "5aad14ff-5c57-42a0-a833-76e6261cad57",
+  "name": "MainWindow",
+  "caption": "RADS Smoke 1778201273",
+  "geometry": {
+    "x": 80,
+    "y": 80,
+    "w": 720,
+    "h": 460
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 320,
+      "height": 240
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": false
+  },
+  "ui_description": {
+    "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>RADS Smoke 1778201273</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n  <main class=\"form-shell\" data-app-id=\"dev.trueos.rads-smoke-1778201273\" data-template=\"form-app\">\n    <h1>RADS Smoke 1778201273</h1>\n    <label>\n      Input\n      <input name=\"inputText\" placeholder=\"Type here\">\n    </label>\n    <button name=\"runButton\" type=\"button\">Click me</button>\n  </main>\n</body>\n</html>\n",
+    "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, sans-serif;\n  background: #f3f6f8;\n  color: #20262e;\n}\n\n.form-shell {\n  display: grid;\n  gap: 16px;\n  max-width: 360px;\n  padding: 32px;\n}\n\nlabel {\n  display: grid;\n  gap: 8px;\n}\n\ninput,\nbutton {\n  font: inherit;\n}\n"
+  },
+  "controls": [
+    {
+      "id": "14ceb1f6-b97e-475b-bc65-fe7e53b485c0",
+      "kind": "label",
+      "name": "titleLabel",
+      "caption": "TRUEOS UI2 app",
+      "geometry": {
+        "x": 32,
+        "y": 34,
+        "w": 220,
+        "h": 28
+      },
+      "properties": [
+        {
+          "key": "role",
+          "value": "heading"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_title_label_ready"
+        }
+      ]
+    },
+    {
+      "id": "9de27517-d4fe-4565-a26a-aa3b4022ed57",
+      "kind": "button",
+      "name": "runButton",
+      "caption": "Click me",
+      "geometry": {
+        "x": 32,
+        "y": 86,
+        "w": 128,
+        "h": 38
+      },
+      "properties": [
+        {
+          "key": "variant",
+          "value": "primary"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_run_button_click"
+        }
+      ]
+    },
+    {
+      "id": "73330f19-b6ac-43f8-96cc-b91f52cefbac",
+      "kind": "text-box",
+      "name": "inputText",
+      "caption": "Type here",
+      "geometry": {
+        "x": 32,
+        "y": 144,
+        "w": 260,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "placeholder",
+          "value": "Type here"
+        }
+      ],
+      "events": [
+        {
+          "event": "change",
+          "handler": "on_input_text_change"
+        }
+      ]
+    }
+  ]
+}

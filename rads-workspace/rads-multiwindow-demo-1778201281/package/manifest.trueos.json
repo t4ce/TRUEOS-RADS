@@ -1,0 +1,44 @@
+{
+  "app_id": "dev.trueos.rads-multiwindow-demo-1778201281",
+  "app_kind": "ui2",
+  "artifacts": [
+    {
+      "kind": "binary",
+      "path": "target/trueos/app.tapp",
+      "target": "trueos-ui2"
+    },
+    {
+      "kind": "layout",
+      "path": "ui/main.ui2",
+      "target": "ui2-layout"
+    },
+    {
+      "kind": "html",
+      "path": "ui/index.html",
+      "target": "ui2-markup"
+    },
+    {
+      "kind": "stylesheet",
+      "path": "ui/styles.css",
+      "target": "ui2-style"
+    }
+  ],
+  "blueprints": {
+    "app": "app.blueprint.json",
+    "html": "ui/index.html",
+    "layout": "ui/main.ui2",
+    "package": "package/package.blueprint.json",
+    "styles": "ui/styles.css"
+  },
+  "display_name": "RADS Multiwindow Demo 1778201281",
+  "entrypoint": "src/main.rs",
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "schema_version": "0.1",
+    "ui_runtime": "TRUEOS/UI2"
+  },
+  "package_id": "dev.trueos.rads-multiwindow-demo-1778201281.package",
+  "schema": "trueos.package.manifest/v1",
+  "version": "0.1.0"
+}

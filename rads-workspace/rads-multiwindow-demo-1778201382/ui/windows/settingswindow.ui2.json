@@ -1,0 +1,35 @@
+{
+  "id": "1a359a05-1e2f-40bf-a8da-80d284f453f6",
+  "name": "SettingsWindow",
+  "caption": "Settings",
+  "geometry": {
+    "x": 124,
+    "y": 124,
+    "w": 680,
+    "h": 420
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 320,
+      "height": 240
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": false
+  },
+  "ui_description": {
+    "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Settings</title>\n  <link rel=\"stylesheet\" href=\"settingswindow.css\">\n</head>\n<body>\n  <main class=\"ui2-window\">\n    <h1>Settings</h1>\n    <p>Design this UI2 window in RADS.</p>\n  </main>\n</body>\n</html>\n",
+    "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, \"Twitter Color Emoji\", \"Twemoji Mozilla\", sans-serif;\n  background: #f4f7f8;\n  color: #182024;\n}\n\n.ui2-window {\n  display: grid;\n  gap: 12px;\n  padding: 28px;\n}\n"
+  },
+  "controls": []
+}

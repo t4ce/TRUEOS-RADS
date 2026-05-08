@@ -1,0 +1,20 @@
+app "RADS Multiwindow Demo 1778201382" id "dev.trueos.rads-multiwindow-demo-1778201382" version "0.1.0"
+
+window MainWindow caption "RADS Multiwindow Demo 1778201382" at 80,80 size 720x460 {
+  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
+  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  layout absolute grid 8
+  label titleLabel at 0,0 size 220x28 caption "TRUEOS UI2 app" props [role="heading"] events [ready -> on_title_label_ready]
+  button runButton at 180,36 size 72x48 caption "Click me" props [variant="primary"] events [click -> on_run_button_click]
+  textbox inputText at 36,276 size 204x96 caption "Type here" props [placeholder="Type here"] events [change -> on_input_text_change]
+  button button1 at 12,36 size 156x48 caption "Close" props [enabled="true", default="false", tab-stop="true"] events [click -> on_button1_click]
+  listbox listbox1 at 300,132 size 220x160 caption "List Box" props [items="", selected-index="-1", multi-select="false"] events [select -> on_listbox1_select]
+  menu menu1 at 348,384 size 360x30 caption "File" props [items="File,Edit,Help", enabled="true"] events [ready -> on_menu1_ready]
+  toolbar toolbar1 at 348,12 size 360x42 caption "Toolbar" props [orientation="horizontal", show-captions="false", enabled="true"] events [ready -> on_toolbar1_ready]
+}
+
+window SettingsWindow caption "Settings" at 124,124 size 680x420 {
+  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
+  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  layout absolute grid 8
+}

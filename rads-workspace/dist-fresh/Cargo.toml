@@ -1,0 +1,9 @@
+[package]
+name = "dist-fresh"
+version = "0.1.0"
+edition = "2024"
+description = "Dist Fresh generated from the Form App template."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+v = { path = "/home/t4ce/REPOS/TRUEOS/crates/trueos-v" }

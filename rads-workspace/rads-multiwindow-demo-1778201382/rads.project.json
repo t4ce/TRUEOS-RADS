@@ -1,0 +1,354 @@
+{
+  "id": "f30dabaa-af13-43b3-a4d5-86fc4a4f990d",
+  "name": "RADS Multiwindow Demo 1778201382",
+  "slug": "rads-multiwindow-demo-1778201382",
+  "root": "/home/t4ce/REPOS/TRUEOS RADS/rads-workspace/rads-multiwindow-demo-1778201382",
+  "app_kind": "ui2",
+  "blueprint": {
+    "schema": "trueos.app.blueprint/v1",
+    "app_id": "dev.trueos.rads-multiwindow-demo-1778201382",
+    "slug": "rads-multiwindow-demo-1778201382",
+    "display_name": "RADS Multiwindow Demo 1778201382",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "ui_layout": "ui/main.ui2",
+    "description": "RADS Multiwindow Demo 1778201382 generated from the UI2 App Form App template.",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "TRUEOS RADS"
+    ],
+    "capabilities": [
+      {
+        "key": "ui2.window",
+        "enabled": true,
+        "note": "Create and manage UI2 windows"
+      },
+      {
+        "key": "ui2.events",
+        "enabled": true,
+        "note": "Bind generated UI2 event handlers"
+      },
+      {
+        "key": "fs.user",
+        "enabled": false,
+        "note": "Read and write user-selected files"
+      },
+      {
+        "key": "net.client",
+        "enabled": false,
+        "note": "Open outbound network connections"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "package": {
+    "schema": "trueos.package.blueprint/v1",
+    "package_id": "dev.trueos.rads-multiwindow-demo-1778201382.package",
+    "app_id": "dev.trueos.rads-multiwindow-demo-1778201382",
+    "name": "rads-multiwindow-demo-1778201382",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "artifacts": [
+      {
+        "kind": "binary",
+        "path": "target/trueos/app.tapp",
+        "target": "trueos-ui2"
+      },
+      {
+        "kind": "layout",
+        "path": "ui/main.ui2",
+        "target": "ui2-layout"
+      },
+      {
+        "kind": "html",
+        "path": "ui/index.html",
+        "target": "ui2-markup"
+      },
+      {
+        "kind": "stylesheet",
+        "path": "ui/styles.css",
+        "target": "ui2-style"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "windows": [
+    {
+      "id": "bf836d26-4368-4630-b8b8-5d80f62f5efe",
+      "name": "MainWindow",
+      "caption": "RADS Multiwindow Demo 1778201382",
+      "geometry": {
+        "x": 80,
+        "y": 80,
+        "w": 720,
+        "h": 460
+      },
+      "decorations": {
+        "titlebar": true,
+        "close": true,
+        "minimize": true,
+        "maximize": true,
+        "resizable": true,
+        "always_on_top": false
+      },
+      "options": {
+        "min_size": {
+          "width": 320,
+          "height": 240
+        },
+        "max_size": null,
+        "resize_mode": "both",
+        "scrollbars": "none",
+        "hit_test_visible": true,
+        "preserve_scale": false
+      },
+      "ui_description": {
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>RADS Multiwindow Demo 1778201382</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n  <main class=\"form-shell\" data-app-id=\"dev.trueos.rads-multiwindow-demo-1778201382\" data-template=\"form-app\">\n    <h1>RADS Multiwindow Demo 1778201382</h1>\n    <label>\n      Input\n      <input name=\"inputText\" placeholder=\"Type here\">\n    </label>\n    <button name=\"runButton\" type=\"button\">Click me</button>\n  </main>\n</body>\n</html>\n",
+        "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, sans-serif;\n  background: #f3f6f8;\n  color: #20262e;\n}\n\n.form-shell {\n  display: grid;\n  gap: 16px;\n  max-width: 360px;\n  padding: 32px;\n}\n\nlabel {\n  display: grid;\n  gap: 8px;\n}\n\ninput,\nbutton {\n  font: inherit;\n}\n"
+      },
+      "controls": [
+        {
+          "id": "17e426cd-fa7a-44d4-a890-4cfc91faa74f",
+          "kind": "label",
+          "name": "titleLabel",
+          "caption": "TRUEOS UI2 app",
+          "geometry": {
+            "x": 0,
+            "y": 0,
+            "w": 220,
+            "h": 28
+          },
+          "properties": [
+            {
+              "key": "role",
+              "value": "heading"
+            }
+          ],
+          "events": [
+            {
+              "event": "ready",
+              "handler": "on_title_label_ready"
+            }
+          ]
+        },
+        {
+          "id": "625e59d6-ecf4-4788-a9b6-2ffb3c742942",
+          "kind": "button",
+          "name": "runButton",
+          "caption": "Click me",
+          "geometry": {
+            "x": 180,
+            "y": 36,
+            "w": 72,
+            "h": 48
+          },
+          "properties": [
+            {
+              "key": "variant",
+              "value": "primary"
+            }
+          ],
+          "events": [
+            {
+              "event": "click",
+              "handler": "on_run_button_click"
+            }
+          ]
+        },
+        {
+          "id": "b22ee638-7053-4168-827d-43f65add6441",
+          "kind": "text-box",
+          "name": "inputText",
+          "caption": "Type here",
+          "geometry": {
+            "x": 36,
+            "y": 276,
+            "w": 204,
+            "h": 96
+          },
+          "properties": [
+            {
+              "key": "placeholder",
+              "value": "Type here"
+            }
+          ],
+          "events": [
+            {
+              "event": "change",
+              "handler": "on_input_text_change"
+            }
+          ]
+        },
+        {
+          "id": "ddeaaf5a-4a36-4d29-913e-c8363d265dd7",
+          "kind": "button",
+          "name": "button1",
+          "caption": "Close",
+          "geometry": {
+            "x": 12,
+            "y": 36,
+            "w": 156,
+            "h": 48
+          },
+          "properties": [
+            {
+              "key": "enabled",
+              "value": "true"
+            },
+            {
+              "key": "default",
+              "value": "false"
+            },
+            {
+              "key": "tab-stop",
+              "value": "true"
+            }
+          ],
+          "events": [
+            {
+              "event": "click",
+              "handler": "on_button1_click"
+            }
+          ]
+        },
+        {
+          "id": "7d961e60-5b2a-4974-af7d-41451af41ac7",
+          "kind": "list-box",
+          "name": "listbox1",
+          "caption": "List Box",
+          "geometry": {
+            "x": 300,
+            "y": 132,
+            "w": 220,
+            "h": 160
+          },
+          "properties": [
+            {
+              "key": "items",
+              "value": ""
+            },
+            {
+              "key": "selected-index",
+              "value": "-1"
+            },
+            {
+              "key": "multi-select",
+              "value": "false"
+            }
+          ],
+          "events": [
+            {
+              "event": "select",
+              "handler": "on_listbox1_select"
+            }
+          ]
+        },
+        {
+          "id": "b0b720d8-1a4c-40c9-a64a-6c164a81dc4f",
+          "kind": "menu",
+          "name": "menu1",
+          "caption": "File",
+          "geometry": {
+            "x": 348,
+            "y": 384,
+            "w": 360,
+            "h": 30
+          },
+          "properties": [
+            {
+              "key": "items",
+              "value": "File,Edit,Help"
+            },
+            {
+              "key": "enabled",
+              "value": "true"
+            }
+          ],
+          "events": [
+            {
+              "event": "ready",
+              "handler": "on_menu1_ready"
+            }
+          ]
+        },
+        {
+          "id": "e53e8c80-ddc9-4888-8405-c5c817f018bc",
+          "kind": "toolbar",
+          "name": "toolbar1",
+          "caption": "Toolbar",
+          "geometry": {
+            "x": 348,
+            "y": 12,
+            "w": 360,
+            "h": 42
+          },
+          "properties": [
+            {
+              "key": "orientation",
+              "value": "horizontal"
+            },
+            {
+              "key": "show-captions",
+              "value": "false"
+            },
+            {
+              "key": "enabled",
+              "value": "true"
+            }
+          ],
+          "events": [
+            {
+              "event": "ready",
+              "handler": "on_toolbar1_ready"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1a359a05-1e2f-40bf-a8da-80d284f453f6",
+      "name": "SettingsWindow",
+      "caption": "Settings",
+      "geometry": {
+        "x": 124,
+        "y": 124,
+        "w": 680,
+        "h": 420
+      },
+      "decorations": {
+        "titlebar": true,
+        "close": true,
+        "minimize": true,
+        "maximize": true,
+        "resizable": true,
+        "always_on_top": false
+      },
+      "options": {
+        "min_size": {
+          "width": 320,
+          "height": 240
+        },
+        "max_size": null,
+        "resize_mode": "both",
+        "scrollbars": "none",
+        "hit_test_visible": true,
+        "preserve_scale": false
+      },
+      "ui_description": {
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Settings</title>\n  <link rel=\"stylesheet\" href=\"settingswindow.css\">\n</head>\n<body>\n  <main class=\"ui2-window\">\n    <h1>Settings</h1>\n    <p>Design this UI2 window in RADS.</p>\n  </main>\n</body>\n</html>\n",
+        "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, \"Twitter Color Emoji\", \"Twemoji Mozilla\", sans-serif;\n  background: #f4f7f8;\n  color: #182024;\n}\n\n.ui2-window {\n  display: grid;\n  gap: 12px;\n  padding: 28px;\n}\n"
+      },
+      "controls": []
+    }
+  ]
+}

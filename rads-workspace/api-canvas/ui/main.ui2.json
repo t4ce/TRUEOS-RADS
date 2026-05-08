@@ -1,0 +1,112 @@
+{
+  "id": "55f57459-53ae-4586-a4fe-5a97bad4c51b",
+  "name": "MainWindow",
+  "caption": "API Canvas",
+  "geometry": {
+    "x": 60,
+    "y": 60,
+    "w": 960,
+    "h": 640
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 640,
+      "height": 420
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": true
+  },
+  "ui_description": {
+    "html": "<main class=\"api-smoke\"><h1>Edited UI</h1></main>",
+    "css": ".api-smoke { color: #123; }"
+  },
+  "controls": [
+    {
+      "id": "e7b9fdb8-17e9-4313-b79c-f24b455fcf64",
+      "kind": "label",
+      "name": "titleLabel",
+      "caption": "Canvas workspace",
+      "geometry": {
+        "x": 24,
+        "y": 24,
+        "w": 220,
+        "h": 28
+      },
+      "properties": [
+        {
+          "key": "role",
+          "value": "heading"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_title_label_ready"
+        }
+      ]
+    },
+    {
+      "id": "f261ab92-1ab8-40fc-929c-87c1172b3d57",
+      "kind": "button",
+      "name": "clearButton",
+      "caption": "Clear",
+      "geometry": {
+        "x": 812,
+        "y": 22,
+        "w": 96,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "variant",
+          "value": "secondary"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_clear_button_click"
+        }
+      ]
+    },
+    {
+      "id": "40125d6f-b80a-4279-993b-801cd5bcdf8f",
+      "kind": "canvas",
+      "name": "drawingCanvas",
+      "caption": "",
+      "geometry": {
+        "x": 24,
+        "y": 72,
+        "w": 884,
+        "h": 520
+      },
+      "properties": [
+        {
+          "key": "surface",
+          "value": "software"
+        },
+        {
+          "key": "background",
+          "value": "#ffffff"
+        }
+      ],
+      "events": [
+        {
+          "event": "draw",
+          "handler": "on_drawing_canvas_draw"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+{
+  "id": "cfa16ae6-9b9d-4e5d-9f4e-59989bac361e",
+  "name": "API Canvas",
+  "slug": "api-canvas",
+  "root": "/home/t4ce/REPOS/TRUEOS RADS/rads-workspace/api-canvas",
+  "blueprint": {
+    "schema": "trueos.app.blueprint/v1",
+    "app_id": "dev.trueos.api-canvas",
+    "slug": "api-canvas",
+    "display_name": "API Canvas",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "ui_layout": "ui/main.ui2",
+    "description": "API smoke edited UI",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "TRUEOS RADS"
+    ],
+    "capabilities": [
+      {
+        "key": "ui2.window",
+        "enabled": true,
+        "note": "Create and manage UI2 windows"
+      },
+      {
+        "key": "ui2.events",
+        "enabled": true,
+        "note": "Bind generated UI2 event handlers"
+      },
+      {
+        "key": "ui2.canvas",
+        "enabled": true,
+        "note": "Draw to a UI2 canvas control"
+      },
+      {
+        "key": "fs.user",
+        "enabled": false,
+        "note": "Read and write user-selected files"
+      },
+      {
+        "key": "net.client",
+        "enabled": false,
+        "note": "Open outbound network connections"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "package": {
+    "schema": "trueos.package.blueprint/v1",
+    "package_id": "dev.trueos.api-canvas.package",
+    "app_id": "dev.trueos.api-canvas",
+    "name": "api-canvas",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "artifacts": [
+      {
+        "kind": "binary",
+        "path": "target/trueos/app.tapp",
+        "target": "trueos-ui2"
+      },
+      {
+        "kind": "layout",
+        "path": "ui/main.ui2",
+        "target": "ui2-layout"
+      },
+      {
+        "kind": "html",
+        "path": "ui/index.html",
+        "target": "ui2-markup"
+      },
+      {
+        "kind": "stylesheet",
+        "path": "ui/styles.css",
+        "target": "ui2-style"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "windows": [
+    {
+      "id": "55f57459-53ae-4586-a4fe-5a97bad4c51b",
+      "name": "MainWindow",
+      "caption": "API Canvas",
+      "geometry": {
+        "x": 60,
+        "y": 60,
+        "w": 960,
+        "h": 640
+      },
+      "decorations": {
+        "titlebar": true,
+        "close": true,
+        "minimize": true,
+        "maximize": true,
+        "resizable": true,
+        "always_on_top": false
+      },
+      "options": {
+        "min_size": {
+          "width": 640,
+          "height": 420
+        },
+        "max_size": null,
+        "resize_mode": "both",
+        "scrollbars": "none",
+        "hit_test_visible": true,
+        "preserve_scale": true
+      },
+      "ui_description": {
+        "html": "<main class=\"api-smoke\"><h1>Edited UI</h1></main>",
+        "css": ".api-smoke { color: #123; }"
+      },
+      "controls": [
+        {
+          "id": "e7b9fdb8-17e9-4313-b79c-f24b455fcf64",
+          "kind": "label",
+          "name": "titleLabel",
+          "caption": "Canvas workspace",
+          "geometry": {
+            "x": 24,
+            "y": 24,
+            "w": 220,
+            "h": 28
+          },
+          "properties": [
+            {
+              "key": "role",
+              "value": "heading"
+            }
+          ],
+          "events": [
+            {
+              "event": "ready",
+              "handler": "on_title_label_ready"
+            }
+          ]
+        },
+        {
+          "id": "f261ab92-1ab8-40fc-929c-87c1172b3d57",
+          "kind": "button",
+          "name": "clearButton",
+          "caption": "Clear",
+          "geometry": {
+            "x": 812,
+            "y": 22,
+            "w": 96,
+            "h": 34
+          },
+          "properties": [
+            {
+              "key": "variant",
+              "value": "secondary"
+            }
+          ],
+          "events": [
+            {
+              "event": "click",
+              "handler": "on_clear_button_click"
+            }
+          ]
+        },
+        {
+          "id": "40125d6f-b80a-4279-993b-801cd5bcdf8f",
+          "kind": "canvas",
+          "name": "drawingCanvas",
+          "caption": "",
+          "geometry": {
+            "x": 24,
+            "y": 72,
+            "w": 884,
+            "h": 520
+          },
+          "properties": [
+            {
+              "key": "surface",
+              "value": "software"
+            },
+            {
+              "key": "background",
+              "value": "#ffffff"
+            }
+          ],
+          "events": [
+            {
+              "event": "draw",
+              "handler": "on_drawing_canvas_draw"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "app_id": "dev.trueos.api-canvas",
+  "artifacts": [
+    {
+      "kind": "binary",
+      "path": "target/trueos/app.tapp",
+      "target": "trueos-ui2"
+    },
+    {
+      "kind": "layout",
+      "path": "ui/main.ui2",
+      "target": "ui2-layout"
+    },
+    {
+      "kind": "html",
+      "path": "ui/index.html",
+      "target": "ui2-markup"
+    },
+    {
+      "kind": "stylesheet",
+      "path": "ui/styles.css",
+      "target": "ui2-style"
+    }
+  ],
+  "blueprints": {
+    "app": "app.blueprint.json",
+    "html": "ui/index.html",
+    "layout": "ui/main.ui2",
+    "package": "package/package.blueprint.json",
+    "styles": "ui/styles.css"
+  },
+  "display_name": "API Canvas",
+  "entrypoint": "src/main.rs",
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "schema_version": "0.1",
+    "ui_runtime": "TRUEOS/UI2"
+  },
+  "package_id": "dev.trueos.api-canvas.package",
+  "schema": "trueos.package.manifest/v1",
+  "version": "0.1.0"
+}

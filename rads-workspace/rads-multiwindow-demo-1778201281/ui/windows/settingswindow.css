@@ -1,0 +1,14 @@
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: system-ui, "Twitter Color Emoji", "Twemoji Mozilla", sans-serif;
+  background: #f4f7f8;
+  color: #182024;
+}
+
+.ui2-window {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+}

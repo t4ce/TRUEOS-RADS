@@ -1,0 +1,9 @@
+[package]
+name = "rads-multiwindow-demo-1778201281"
+version = "0.1.0"
+edition = "2024"
+description = "RADS Multiwindow Demo 1778201281 generated from the UI2 App Form App template."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+v = { path = "/home/t4ce/REPOS/TRUEOS/crates/trueos-v" }

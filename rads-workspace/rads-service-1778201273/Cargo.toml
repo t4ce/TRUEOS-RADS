@@ -1,0 +1,9 @@
+[package]
+name = "rads-service-1778201273"
+version = "0.1.0"
+edition = "2024"
+description = "RADS Service 1778201273 generated from the Background Service Service App template."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+v = { path = "/home/t4ce/REPOS/TRUEOS/crates/trueos-v" }

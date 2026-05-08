@@ -1,0 +1,21 @@
+{
+  "schema": "trueos.package.blueprint/v1",
+  "package_id": "dev.trueos.rads-service-1778201273.package",
+  "app_id": "dev.trueos.rads-service-1778201273",
+  "name": "rads-service-1778201273",
+  "version": "0.1.0",
+  "entrypoint": "src/main.rs",
+  "artifacts": [
+    {
+      "kind": "binary",
+      "path": "target/trueos/app.tapp",
+      "target": "trueos-service"
+    }
+  ],
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "ui_runtime": "TRUEOS/service",
+    "schema_version": "0.1"
+  }
+}

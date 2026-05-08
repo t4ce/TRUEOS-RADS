@@ -1,0 +1,140 @@
+{
+  "id": "330737be-b441-4bcf-8607-1caba9e4b2a6",
+  "name": "MainWindow",
+  "caption": "Dist Fresh",
+  "geometry": {
+    "x": 80,
+    "y": 80,
+    "w": 720,
+    "h": 460
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 320,
+      "height": 240
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": false
+  },
+  "ui_description": {
+    "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Dist Fresh</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n  <main class=\"form-shell\" data-app-id=\"dev.trueos.dist-fresh\" data-template=\"form-app\">\n    <h1>Dist Fresh</h1>\n    <label>\n      Input\n      <input name=\"inputText\" placeholder=\"Type here\">\n    </label>\n    <button name=\"runButton\" type=\"button\">Click me</button>\n  </main>\n</body>\n</html>\n",
+    "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, sans-serif;\n  background: #f3f6f8;\n  color: #20262e;\n}\n\n.form-shell {\n  display: grid;\n  gap: 16px;\n  max-width: 360px;\n  padding: 32px;\n}\n\nlabel {\n  display: grid;\n  gap: 8px;\n}\n\ninput,\nbutton {\n  font: inherit;\n}\n"
+  },
+  "controls": [
+    {
+      "id": "1b1efbdc-c534-41a8-b3ec-533006d9aaa8",
+      "kind": "label",
+      "name": "titleLabel",
+      "caption": "TRUEOS UI2 app",
+      "geometry": {
+        "x": 32,
+        "y": 34,
+        "w": 220,
+        "h": 28
+      },
+      "properties": [
+        {
+          "key": "role",
+          "value": "heading"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_title_label_ready"
+        }
+      ]
+    },
+    {
+      "id": "6e5815af-b3bc-4dac-a2e8-ea7c26fbb7e4",
+      "kind": "button",
+      "name": "runButton",
+      "caption": "Click me",
+      "geometry": {
+        "x": 32,
+        "y": 86,
+        "w": 128,
+        "h": 38
+      },
+      "properties": [
+        {
+          "key": "variant",
+          "value": "primary"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_run_button_click"
+        }
+      ]
+    },
+    {
+      "id": "797162ce-0c48-46b4-a038-5e056574f744",
+      "kind": "text-box",
+      "name": "inputText",
+      "caption": "Type here",
+      "geometry": {
+        "x": 32,
+        "y": 144,
+        "w": 260,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "placeholder",
+          "value": "Type here"
+        }
+      ],
+      "events": [
+        {
+          "event": "change",
+          "handler": "on_input_text_change"
+        }
+      ]
+    },
+    {
+      "id": "e3d770af-69e2-4e42-a69a-7c0af3201a11",
+      "kind": "button",
+      "name": "button1",
+      "caption": "Button",
+      "geometry": {
+        "x": 348,
+        "y": 240,
+        "w": 120,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "enabled",
+          "value": "true"
+        },
+        {
+          "key": "default",
+          "value": "false"
+        },
+        {
+          "key": "tab-stop",
+          "value": "true"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_button1_click"
+        }
+      ]
+    }
+  ]
+}

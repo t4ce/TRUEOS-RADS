@@ -1,0 +1,230 @@
+{
+  "id": "c38ec358-aec0-48d1-92f0-ce044e1fad81",
+  "name": "RADS Smoke 1778201273",
+  "slug": "rads-smoke-1778201273",
+  "root": "/home/t4ce/REPOS/TRUEOS RADS/rads-workspace/rads-smoke-1778201273",
+  "app_kind": "ui2",
+  "blueprint": {
+    "schema": "trueos.app.blueprint/v1",
+    "app_id": "dev.trueos.rads-smoke-1778201273",
+    "slug": "rads-smoke-1778201273",
+    "display_name": "RADS Smoke 1778201273",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "ui_layout": "ui/main.ui2",
+    "description": "RADS Smoke 1778201273 generated from the UI2 App Form App template.",
+    "license": "MIT OR Apache-2.0",
+    "authors": [
+      "TRUEOS RADS"
+    ],
+    "capabilities": [
+      {
+        "key": "ui2.window",
+        "enabled": true,
+        "note": "Create and manage UI2 windows"
+      },
+      {
+        "key": "ui2.events",
+        "enabled": true,
+        "note": "Bind generated UI2 event handlers"
+      },
+      {
+        "key": "fs.user",
+        "enabled": false,
+        "note": "Read and write user-selected files"
+      },
+      {
+        "key": "net.client",
+        "enabled": false,
+        "note": "Open outbound network connections"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "package": {
+    "schema": "trueos.package.blueprint/v1",
+    "package_id": "dev.trueos.rads-smoke-1778201273.package",
+    "app_id": "dev.trueos.rads-smoke-1778201273",
+    "name": "rads-smoke-1778201273",
+    "version": "0.1.0",
+    "entrypoint": "src/main.rs",
+    "artifacts": [
+      {
+        "kind": "binary",
+        "path": "target/trueos/app.tapp",
+        "target": "trueos-ui2"
+      },
+      {
+        "kind": "layout",
+        "path": "ui/main.ui2",
+        "target": "ui2-layout"
+      },
+      {
+        "kind": "html",
+        "path": "ui/index.html",
+        "target": "ui2-markup"
+      },
+      {
+        "kind": "stylesheet",
+        "path": "ui/styles.css",
+        "target": "ui2-style"
+      }
+    ],
+    "metadata": {
+      "generator": "trueos-rads",
+      "generator_version": "0.1.0",
+      "ui_runtime": "TRUEOS/UI2",
+      "schema_version": "0.1"
+    }
+  },
+  "windows": [
+    {
+      "id": "5aad14ff-5c57-42a0-a833-76e6261cad57",
+      "name": "MainWindow",
+      "caption": "RADS Smoke 1778201273",
+      "geometry": {
+        "x": 80,
+        "y": 80,
+        "w": 720,
+        "h": 460
+      },
+      "decorations": {
+        "titlebar": true,
+        "close": true,
+        "minimize": true,
+        "maximize": true,
+        "resizable": true,
+        "always_on_top": false
+      },
+      "options": {
+        "min_size": {
+          "width": 320,
+          "height": 240
+        },
+        "max_size": null,
+        "resize_mode": "both",
+        "scrollbars": "none",
+        "hit_test_visible": true,
+        "preserve_scale": false
+      },
+      "ui_description": {
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>RADS Smoke 1778201273</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n  <main class=\"form-shell\" data-app-id=\"dev.trueos.rads-smoke-1778201273\" data-template=\"form-app\">\n    <h1>RADS Smoke 1778201273</h1>\n    <label>\n      Input\n      <input name=\"inputText\" placeholder=\"Type here\">\n    </label>\n    <button name=\"runButton\" type=\"button\">Click me</button>\n  </main>\n</body>\n</html>\n",
+        "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, sans-serif;\n  background: #f3f6f8;\n  color: #20262e;\n}\n\n.form-shell {\n  display: grid;\n  gap: 16px;\n  max-width: 360px;\n  padding: 32px;\n}\n\nlabel {\n  display: grid;\n  gap: 8px;\n}\n\ninput,\nbutton {\n  font: inherit;\n}\n"
+      },
+      "controls": [
+        {
+          "id": "14ceb1f6-b97e-475b-bc65-fe7e53b485c0",
+          "kind": "label",
+          "name": "titleLabel",
+          "caption": "TRUEOS UI2 app",
+          "geometry": {
+            "x": 32,
+            "y": 34,
+            "w": 220,
+            "h": 28
+          },
+          "properties": [
+            {
+              "key": "role",
+              "value": "heading"
+            }
+          ],
+          "events": [
+            {
+              "event": "ready",
+              "handler": "on_title_label_ready"
+            }
+          ]
+        },
+        {
+          "id": "9de27517-d4fe-4565-a26a-aa3b4022ed57",
+          "kind": "button",
+          "name": "runButton",
+          "caption": "Click me",
+          "geometry": {
+            "x": 32,
+            "y": 86,
+            "w": 128,
+            "h": 38
+          },
+          "properties": [
+            {
+              "key": "variant",
+              "value": "primary"
+            }
+          ],
+          "events": [
+            {
+              "event": "click",
+              "handler": "on_run_button_click"
+            }
+          ]
+        },
+        {
+          "id": "73330f19-b6ac-43f8-96cc-b91f52cefbac",
+          "kind": "text-box",
+          "name": "inputText",
+          "caption": "Type here",
+          "geometry": {
+            "x": 32,
+            "y": 144,
+            "w": 260,
+            "h": 34
+          },
+          "properties": [
+            {
+              "key": "placeholder",
+              "value": "Type here"
+            }
+          ],
+          "events": [
+            {
+              "event": "change",
+              "handler": "on_input_text_change"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4776a794-e148-48e0-81a6-a62fe587262d",
+      "name": "SecondWindow",
+      "caption": "Second Window",
+      "geometry": {
+        "x": 124,
+        "y": 124,
+        "w": 680,
+        "h": 420
+      },
+      "decorations": {
+        "titlebar": true,
+        "close": true,
+        "minimize": true,
+        "maximize": true,
+        "resizable": true,
+        "always_on_top": false
+      },
+      "options": {
+        "min_size": {
+          "width": 320,
+          "height": 240
+        },
+        "max_size": null,
+        "resize_mode": "both",
+        "scrollbars": "none",
+        "hit_test_visible": true,
+        "preserve_scale": false
+      },
+      "ui_description": {
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Second Window</title>\n  <link rel=\"stylesheet\" href=\"secondwindow.css\">\n</head>\n<body>\n  <main class=\"ui2-window\">\n    <h1>Second Window</h1>\n    <p>Design this UI2 window in RADS.</p>\n  </main>\n</body>\n</html>\n",
+        "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, \"Twitter Color Emoji\", \"Twemoji Mozilla\", sans-serif;\n  background: #f4f7f8;\n  color: #182024;\n}\n\n.ui2-window {\n  display: grid;\n  gap: 12px;\n  padding: 28px;\n}\n"
+      },
+      "controls": []
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "trueos.app.blueprint/v1",
+  "app_id": "dev.trueos.rads-service-1778201273",
+  "slug": "rads-service-1778201273",
+  "display_name": "RADS Service 1778201273",
+  "version": "0.1.0",
+  "entrypoint": "src/main.rs",
+  "ui_layout": "",
+  "description": "RADS Service 1778201273 generated from the Background Service Service App template.",
+  "license": "MIT OR Apache-2.0",
+  "authors": [
+    "TRUEOS RADS"
+  ],
+  "capabilities": [
+    {
+      "key": "service.background",
+      "enabled": true,
+      "note": "Run as a classic background service"
+    },
+    {
+      "key": "service.events",
+      "enabled": true,
+      "note": "Register service lifecycle handlers"
+    },
+    {
+      "key": "fs.user",
+      "enabled": false,
+      "note": "Read and write user-selected files"
+    },
+    {
+      "key": "net.client",
+      "enabled": false,
+      "note": "Open outbound network connections"
+    }
+  ],
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "ui_runtime": "TRUEOS/service",
+    "schema_version": "0.1"
+  }
+}

@@ -1,0 +1,10 @@
+app "API Canvas" id "dev.trueos.api-canvas" version "0.1.0"
+
+window MainWindow caption "API Canvas" at 60,60 size 960x640 {
+  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
+  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  layout absolute grid 8
+  label titleLabel at 24,24 size 220x28 caption "Canvas workspace" props [role="heading"] events [ready -> on_title_label_ready]
+  button clearButton at 812,22 size 96x34 caption "Clear" props [variant="secondary"] events [click -> on_clear_button_click]
+  canvas drawingCanvas at 24,72 size 884x520 caption "" props [surface="software", background="#ffffff"] events [draw -> on_drawing_canvas_draw]
+}

@@ -1,0 +1,26 @@
+{
+  "app_id": "dev.trueos.rads-service-1778201273",
+  "app_kind": "service",
+  "artifacts": [
+    {
+      "kind": "binary",
+      "path": "target/trueos/app.tapp",
+      "target": "trueos-service"
+    }
+  ],
+  "blueprints": {
+    "app": "app.blueprint.json",
+    "package": "package/package.blueprint.json"
+  },
+  "display_name": "RADS Service 1778201273",
+  "entrypoint": "src/main.rs",
+  "metadata": {
+    "generator": "trueos-rads",
+    "generator_version": "0.1.0",
+    "schema_version": "0.1",
+    "ui_runtime": "TRUEOS/service"
+  },
+  "package_id": "dev.trueos.rads-service-1778201273.package",
+  "schema": "trueos.package.manifest/v1",
+  "version": "0.1.0"
+}

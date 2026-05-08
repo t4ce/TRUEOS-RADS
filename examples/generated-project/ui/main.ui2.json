@@ -1,0 +1,144 @@
+{
+  "id": "22222222-2222-4222-8222-222222222222",
+  "name": "MainWindow",
+  "caption": "Hello UI2",
+  "geometry": {
+    "x": 80,
+    "y": 80,
+    "w": 720,
+    "h": 460
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 320,
+      "height": 240
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": false
+  },
+  "ui_description": {
+    "html": "<main class=\"ui2-window\" data-layout=\"absolute\"><section class=\"ui2-surface\"></section></main>",
+    "css": ".ui2-window { position: relative; width: 100%; height: 100%; overflow: hidden; }\n.ui2-surface { position: relative; min-width: 100%; min-height: 100%; }\n"
+  },
+  "controls": [
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "kind": "label",
+      "name": "titleLabel",
+      "caption": "TRUEOS UI2 app",
+      "geometry": {
+        "x": 32,
+        "y": 34,
+        "w": 220,
+        "h": 28
+      },
+      "properties": [
+        {
+          "key": "role",
+          "value": "heading"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_title_label_ready"
+        }
+      ]
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "kind": "button",
+      "name": "runButton",
+      "caption": "Click me",
+      "geometry": {
+        "x": 32,
+        "y": 86,
+        "w": 128,
+        "h": 38
+      },
+      "properties": [
+        {
+          "key": "variant",
+          "value": "primary"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_run_button_click"
+        }
+      ]
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "kind": "text-box",
+      "name": "inputText",
+      "caption": "Type here",
+      "geometry": {
+        "x": 32,
+        "y": 144,
+        "w": 260,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "placeholder",
+          "value": "Type here"
+        }
+      ],
+      "events": [
+        {
+          "event": "change",
+          "handler": "on_input_text_change"
+        }
+      ]
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "kind": "text-box",
+      "name": "textbox1",
+      "caption": "Search",
+      "geometry": {
+        "x": 56,
+        "y": 160,
+        "w": 180,
+        "h": 32
+      },
+      "properties": [
+        {
+          "key": "placeholder",
+          "value": ""
+        },
+        {
+          "key": "read-only",
+          "value": "false"
+        },
+        {
+          "key": "max-length",
+          "value": "0"
+        },
+        {
+          "key": "tab-stop",
+          "value": "true"
+        }
+      ],
+      "events": [
+        {
+          "event": "change",
+          "handler": "on_textbox1_change"
+        }
+      ]
+    }
+  ]
+}

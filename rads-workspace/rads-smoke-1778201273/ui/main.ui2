@@ -1,0 +1,16 @@
+app "RADS Smoke 1778201273" id "dev.trueos.rads-smoke-1778201273" version "0.1.0"
+
+window MainWindow caption "RADS Smoke 1778201273" at 80,80 size 720x460 {
+  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
+  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  layout absolute grid 8
+  label titleLabel at 32,34 size 220x28 caption "TRUEOS UI2 app" props [role="heading"] events [ready -> on_title_label_ready]
+  button runButton at 32,86 size 128x38 caption "Click me" props [variant="primary"] events [click -> on_run_button_click]
+  textbox inputText at 32,144 size 260x34 caption "Type here" props [placeholder="Type here"] events [change -> on_input_text_change]
+}
+
+window SecondWindow caption "Second Window" at 124,124 size 680x420 {
+  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
+  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  layout absolute grid 8
+}

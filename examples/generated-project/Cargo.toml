@@ -1,0 +1,9 @@
+[package]
+name = "hello-ui2"
+version = "0.1.0"
+edition = "2024"
+description = "Hello UI2 generated with TRUEOS RADS."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+v = { path = "../../TRUEOS/crates/trueos-v" }

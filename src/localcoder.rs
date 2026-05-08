@@ -64,6 +64,7 @@ pub struct LocalCoderStatusResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<LocalCoderSettingsSummary>,
     pub checked_candidates: Vec<String>,
+    pub tools: Vec<LocalCoderToolSummary>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -76,6 +77,16 @@ pub struct LocalCoderSettingsSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     pub api_key: LocalCoderApiKeyState,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LocalCoderToolSummary {
+    pub id: String,
+    pub label: String,
+    pub available: bool,
+    pub mode: String,
+    pub tools: Vec<String>,
+    pub detail: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -153,6 +164,13 @@ struct CommandPlan {
     strategy: LocalCoderCommandStrategy,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LocalCoderExecutionContext {
+    pub cwd: Option<PathBuf>,
+    pub prompt_prelude: Option<String>,
+    pub env: Vec<(String, String)>,
+}
+
 pub async fn status() -> LocalCoderStatusResponse {
     status_sync()
 }
@@ -161,6 +179,7 @@ pub fn status_sync() -> LocalCoderStatusResponse {
     let report = discover_binary();
     let settings = settings_summary();
     let settings_message = settings_status_message(settings.as_ref());
+    let tools = tool_summaries(report.binary.is_some());
     match report.binary {
         Some(binary) => LocalCoderStatusResponse {
             available: settings_message.is_none(),
@@ -169,6 +188,7 @@ pub fn status_sync() -> LocalCoderStatusResponse {
             message: settings_message,
             settings,
             checked_candidates: report.checked_candidates,
+            tools,
         },
         None => LocalCoderStatusResponse {
             available: false,
@@ -177,6 +197,7 @@ pub fn status_sync() -> LocalCoderStatusResponse {
             message: Some("localcoder executable not found".to_string()),
             settings,
             checked_candidates: report.checked_candidates,
+            tools,
         },
     }
 }
@@ -193,6 +214,13 @@ fn settings_status_message(settings: Option<&LocalCoderSettingsSummary>) -> Opti
 pub async fn chat(
     request: LocalCoderChatRequest,
 ) -> Result<LocalCoderChatResponse, LocalCoderError> {
+    chat_with_context(request, None).await
+}
+
+pub async fn chat_with_context(
+    request: LocalCoderChatRequest,
+    context: Option<LocalCoderExecutionContext>,
+) -> Result<LocalCoderChatResponse, LocalCoderError> {
     let report = discover_binary();
     let Some(binary) = report.binary else {
         return Err(LocalCoderError {
@@ -205,8 +233,16 @@ pub async fn chat(
         });
     };
 
-    let plan = command_plan(&request.prompt)?;
-    let output = run_localcoder(&binary.path, &request.prompt, &plan, request.timeout_ms).await?;
+    let prompt = prompt_with_context(&request.prompt, context.as_ref());
+    let plan = command_plan(&prompt)?;
+    let output = run_localcoder(
+        &binary.path,
+        &prompt,
+        &plan,
+        request.timeout_ms,
+        context.as_ref(),
+    )
+    .await?;
 
     if !output.status.success() {
         return Err(LocalCoderError {
@@ -235,6 +271,7 @@ async fn run_localcoder(
     prompt: &str,
     plan: &CommandPlan,
     timeout_ms: Option<u64>,
+    context: Option<&LocalCoderExecutionContext>,
 ) -> Result<std::process::Output, LocalCoderError> {
     let mut command = Command::new(bin_path);
     command
@@ -247,6 +284,15 @@ async fn run_localcoder(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+
+    if let Some(context) = context {
+        if let Some(cwd) = &context.cwd {
+            command.current_dir(cwd);
+        }
+        for (key, value) in &context.env {
+            command.env(key, value);
+        }
+    }
 
     if let Some(home) = configured_localcoder_home() {
         command.env("HOME", home);
@@ -289,6 +335,18 @@ async fn run_localcoder(
             detail: Some(format!("timeout_ms={}", timeout.as_millis())),
         })?
         .map_err(io_error("failed to read localcoder output"))
+}
+
+fn prompt_with_context(prompt: &str, context: Option<&LocalCoderExecutionContext>) -> String {
+    let Some(prelude) = context
+        .and_then(|context| context.prompt_prelude.as_deref())
+        .map(str::trim)
+        .filter(|prelude| !prelude.is_empty())
+    else {
+        return prompt.to_string();
+    };
+
+    format!("{prelude}\n\nUser prompt:\n{prompt}")
 }
 
 fn command_plan(prompt: &str) -> Result<CommandPlan, LocalCoderError> {
@@ -473,6 +531,107 @@ fn api_key_state(
         Some(_) => LocalCoderApiKeyState::Unknown,
         None => LocalCoderApiKeyState::Unknown,
     }
+}
+
+fn tool_summaries(localcoder_available: bool) -> Vec<LocalCoderToolSummary> {
+    let bash_available = localcoder_available && command_available("bash");
+    let git_available = bash_available && command_available("git");
+
+    vec![
+        tool_summary(
+            "files",
+            "Files",
+            localcoder_available,
+            "native",
+            ["Read", "Edit", "Write"],
+            "Project-relative file read, edit, and write tools.",
+        ),
+        tool_summary(
+            "search",
+            "Search",
+            localcoder_available,
+            "native",
+            ["Glob", "Grep"],
+            "Project search tools that respect ignore rules.",
+        ),
+        tool_summary(
+            "shell",
+            "Shell",
+            bash_available,
+            "native",
+            ["Bash"],
+            "Runs shell commands through bash -lc in the active project cwd.",
+        ),
+        tool_summary(
+            "web",
+            "Web",
+            localcoder_available,
+            "native",
+            ["WebFetch", "WebSearch"],
+            "Fetch and search web content when network access is available.",
+        ),
+        tool_summary(
+            "git",
+            "Git",
+            git_available,
+            "via_shell",
+            ["Bash"],
+            "No dedicated model Git tool yet; use Bash with git in the project cwd.",
+        ),
+        tool_summary(
+            "lsp",
+            "LSP",
+            localcoder_available,
+            "native",
+            ["Lsp"],
+            "Language-server tool is registered; server availability depends on project config.",
+        ),
+        tool_summary(
+            "plan",
+            "Plan",
+            localcoder_available,
+            "native",
+            ["EnterPlanMode", "ExitPlanMode", "TodoWrite"],
+            "Plan-mode and todo tools backed by the project-local localcoder home.",
+        ),
+        tool_summary(
+            "skills",
+            "Skills",
+            localcoder_available,
+            "native",
+            ["Skill"],
+            "Skill activation tool backed by localcoder skill registries.",
+        ),
+    ]
+}
+
+fn tool_summary<const N: usize>(
+    id: &str,
+    label: &str,
+    available: bool,
+    mode: &str,
+    tools: [&str; N],
+    detail: &str,
+) -> LocalCoderToolSummary {
+    LocalCoderToolSummary {
+        id: id.to_string(),
+        label: label.to_string(),
+        available,
+        mode: mode.to_string(),
+        tools: tools.into_iter().map(ToOwned::to_owned).collect(),
+        detail: detail.to_string(),
+    }
+}
+
+fn command_available(name: &str) -> bool {
+    let Some(path) = env::var_os("PATH") else {
+        return false;
+    };
+
+    env::split_paths(&path).any(|dir| {
+        let candidate = dir.join(name);
+        candidate.is_file()
+    })
 }
 
 fn split_args(input: &str) -> Result<Vec<String>, String> {

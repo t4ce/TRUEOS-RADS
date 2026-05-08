@@ -28,6 +28,15 @@ OPENAI_API_KEY=sk-proj-your-test-key
 
 The localcoder model settings live in `.localcoder-home/.localcoder/settings.json`. Both `.env.local` and `.localcoder-home/` are ignored by git; `.env.local.example` shows the expected shape.
 
+When a RADS project is active, the Localcoder chat runs with that project root
+as its working directory and receives a small TRUEOS RADS context prelude. The
+CLI tools therefore see the active project through normal cwd-based operations:
+`Bash` runs `bash -lc`, file/search tools resolve against the project root, and
+RADS also exposes `TRUEOS_RADS_PROJECT_*` environment variables to the process.
+The Localcoder Tools tab is backed by `/api/localcoder/status`; Git is currently
+reported as available through the Bash tool rather than as a dedicated model
+function.
+
 ## Shape
 
 Generated projects live under `rads-workspace/` and include:

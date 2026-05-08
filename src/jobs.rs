@@ -4,9 +4,13 @@ use anyhow::{Context, bail};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::{Mutex, broadcast};
 use uuid::Uuid;
@@ -126,6 +130,20 @@ struct JobState {
     recent: VecDeque<Uuid>,
     next_sequence: u64,
 }
+
+#[derive(Debug, Clone)]
+struct BlueprintTool {
+    program: PathBuf,
+    args: Vec<OsString>,
+    cwd: PathBuf,
+    envs: Vec<(String, OsString)>,
+}
+
+const TRUEOS_BLUEPRINT_BIN_ENV: &str = "TRUEOS_BLUEPRINT_BIN";
+const TRUEOS_BLUEPRINT_ROOT_ENV: &str = "TRUEOS_BLUEPRINT_ROOT";
+const TRUEOS_BLUEPRINT_KERNEL_ROOT_ENV: &str = "TRUEOS_BLUEPRINT_KERNEL_ROOT";
+const TRUEOS_BLUEPRINT_CARGO_CACHE_DIR_ENV: &str = "TRUEOS_BLUEPRINT_CARGO_CACHE_DIR";
+const TRUEOS_BLUEPRINT_TARGET_SPEC_ENV: &str = "TRUEOS_BLUEPRINT_TARGET_SPEC";
 
 impl JobManager {
     pub fn new() -> Self {
@@ -323,8 +341,8 @@ impl JobManager {
                 self.run_command(id, stage, project, "cargo", &["build"])
                     .await
             }
-            JobStage::Pack => self.simulate_pack(id, project).await,
-            JobStage::Dist => self.simulate_dist(id, project).await,
+            JobStage::Pack => self.run_pack(id, project).await,
+            JobStage::Dist => self.run_dist(id, project).await,
         }
     }
 
@@ -419,7 +437,51 @@ impl JobManager {
         Ok(())
     }
 
-    async fn simulate_pack(&self, id: Uuid, project: &Path) -> anyhow::Result<()> {
+    async fn run_pack(&self, id: Uuid, project: &Path) -> anyhow::Result<()> {
+        self.write_package_plan(id, project).await?;
+
+        let Some(tool) = discover_blueprint_tool(project) else {
+            self.note(
+                id,
+                JobStatus::Running,
+                JobEventType::Output,
+                JobStream::System,
+                Some(JobStage::Pack),
+                Some(JobStatus::Running),
+                "trueos-blueprint not found; package plan is ready",
+            )
+            .await;
+            return Ok(());
+        };
+
+        let cache = tool
+            .envs
+            .iter()
+            .find(|(key, _)| key == TRUEOS_BLUEPRINT_CARGO_CACHE_DIR_ENV)
+            .map(|(_, value)| value.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "default".to_string());
+        self.note(
+            id,
+            JobStatus::Running,
+            JobEventType::Output,
+            JobStream::System,
+            Some(JobStage::Pack),
+            Some(JobStatus::Running),
+            &format!("running trueos-blueprint with cargo cache {cache}"),
+        )
+        .await;
+        self.run_process_streamed(
+            id,
+            JobStage::Pack,
+            &tool.cwd,
+            &tool.program,
+            &tool.args,
+            &tool.envs,
+        )
+        .await
+    }
+
+    async fn write_package_plan(&self, id: Uuid, project: &Path) -> anyhow::Result<()> {
         require_project_file(project, "app.blueprint.json")?;
         require_project_file(project, "package/package.blueprint.json")?;
         let project_model = read_project_model(project)?;
@@ -479,12 +541,26 @@ impl JobManager {
         Ok(())
     }
 
-    async fn simulate_dist(&self, id: Uuid, project: &Path) -> anyhow::Result<()> {
+    async fn run_dist(&self, id: Uuid, project: &Path) -> anyhow::Result<()> {
         let project_model = read_project_model(project)?;
         let dist_dir = project.join("dist");
+        let dist_path = dist_dir.join(format!("{}.bp", project_model.slug));
+        if dist_path.is_file() {
+            self.note(
+                id,
+                JobStatus::Running,
+                JobEventType::Output,
+                JobStream::System,
+                Some(JobStage::Dist),
+                Some(JobStatus::Running),
+                &format!("verified dist artifact {}", dist_path.display()),
+            )
+            .await;
+            return Ok(());
+        }
+
         fs::create_dir_all(&dist_dir)
             .with_context(|| format!("failed to create {}", dist_dir.display()))?;
-        let dist_path = dist_dir.join(format!("{}.bp", project_model.slug));
         let body = serde_json::to_vec_pretty(&serde_json::json!({
             "schema": "trueos.rads.dist-placeholder/v1",
             "app_id": project_model.blueprint.app_id,
@@ -505,6 +581,105 @@ impl JobManager {
         )
         .await;
         Ok(())
+    }
+
+    async fn run_process_streamed(
+        &self,
+        id: Uuid,
+        stage: JobStage,
+        cwd: &Path,
+        program: &Path,
+        args: &[OsString],
+        envs: &[(String, OsString)],
+    ) -> anyhow::Result<()> {
+        let rendered_args = args
+            .iter()
+            .map(|arg| arg.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(" ");
+        self.note(
+            id,
+            JobStatus::Running,
+            JobEventType::Output,
+            JobStream::System,
+            Some(stage),
+            Some(JobStatus::Running),
+            &format!(
+                "running `{}` {} in {}",
+                program.display(),
+                rendered_args,
+                cwd.display()
+            ),
+        )
+        .await;
+
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(cwd)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+
+        let mut child = command.spawn().with_context(|| {
+            format!("failed to start {} in {}", program.display(), cwd.display())
+        })?;
+        let stdout_task = child.stdout.take().map(|stdout| {
+            let manager = self.clone();
+            tokio::spawn(async move {
+                let mut lines = BufReader::new(stdout).lines();
+                while let Some(line) = lines.next_line().await? {
+                    manager
+                        .note(
+                            id,
+                            JobStatus::Running,
+                            JobEventType::Output,
+                            JobStream::Stdout,
+                            Some(stage),
+                            Some(JobStatus::Running),
+                            &line,
+                        )
+                        .await;
+                }
+                Ok::<(), std::io::Error>(())
+            })
+        });
+        let stderr_task = child.stderr.take().map(|stderr| {
+            let manager = self.clone();
+            tokio::spawn(async move {
+                let mut lines = BufReader::new(stderr).lines();
+                while let Some(line) = lines.next_line().await? {
+                    manager
+                        .note(
+                            id,
+                            JobStatus::Running,
+                            JobEventType::Output,
+                            JobStream::Stderr,
+                            Some(stage),
+                            Some(JobStatus::Running),
+                            &line,
+                        )
+                        .await;
+                }
+                Ok::<(), std::io::Error>(())
+            })
+        });
+
+        let status = child.wait().await?;
+        if let Some(task) = stdout_task {
+            task.await.context("stdout reader task failed")??;
+        }
+        if let Some(task) = stderr_task {
+            task.await.context("stderr reader task failed")??;
+        }
+
+        if status.success() {
+            Ok(())
+        } else {
+            bail!("command exited with {status}");
+        }
     }
 
     async fn note(
@@ -679,6 +854,117 @@ fn diagnostic_tail(diagnostic: &str) -> String {
         "no stderr".to_string()
     } else {
         tail.into_iter().rev().collect::<Vec<_>>().join(" | ")
+    }
+}
+
+fn discover_blueprint_tool(project: &Path) -> Option<BlueprintTool> {
+    let root = discover_blueprint_root(project);
+    let mut envs = Vec::new();
+    if let Some(root) = root.as_ref() {
+        let target_spec = env_path(TRUEOS_BLUEPRINT_TARGET_SPEC_ENV)
+            .or_else(|| Some(root.join("target.json")))
+            .filter(|path| path.is_file())?;
+        envs.push((
+            TRUEOS_BLUEPRINT_TARGET_SPEC_ENV.to_string(),
+            target_spec.into_os_string(),
+        ));
+
+        let cache_dir = env_path(TRUEOS_BLUEPRINT_CARGO_CACHE_DIR_ENV)
+            .unwrap_or_else(|| root.join("target/trueos-blueprint/cargo-cache"));
+        envs.push((
+            TRUEOS_BLUEPRINT_CARGO_CACHE_DIR_ENV.to_string(),
+            cache_dir.into_os_string(),
+        ));
+
+        if let Some(kernel_root) = discover_kernel_root(root) {
+            envs.push((
+                TRUEOS_BLUEPRINT_KERNEL_ROOT_ENV.to_string(),
+                kernel_root.into_os_string(),
+            ));
+        }
+    }
+
+    if let Some(bin) = env_path(TRUEOS_BLUEPRINT_BIN_ENV).filter(|path| path.is_file()) {
+        return Some(BlueprintTool {
+            program: bin,
+            args: vec![project.as_os_str().to_os_string()],
+            cwd: project.to_path_buf(),
+            envs,
+        });
+    }
+
+    let root = root?;
+    let bin = root.join("target/debug/trueos-blueprint");
+    if bin.is_file() {
+        return Some(BlueprintTool {
+            program: bin,
+            args: vec![project.as_os_str().to_os_string()],
+            cwd: root,
+            envs,
+        });
+    }
+
+    Some(BlueprintTool {
+        program: PathBuf::from("cargo"),
+        args: vec![
+            OsString::from("run"),
+            OsString::from("--quiet"),
+            OsString::from("--bin"),
+            OsString::from("trueos-blueprint"),
+            OsString::from("--"),
+            project.as_os_str().to_os_string(),
+        ],
+        cwd: root,
+        envs,
+    })
+}
+
+fn discover_blueprint_root(project: &Path) -> Option<PathBuf> {
+    if let Some(root) = env_path(TRUEOS_BLUEPRINT_ROOT_ENV).filter(|path| is_blueprint_root(path)) {
+        return Some(root);
+    }
+
+    for ancestor in project.ancestors() {
+        if is_blueprint_root(ancestor) {
+            return Some(ancestor.to_path_buf());
+        }
+
+        let sibling = ancestor.join("TRUEOS Blueprints");
+        if is_blueprint_root(&sibling) {
+            return Some(sibling);
+        }
+    }
+
+    None
+}
+
+fn is_blueprint_root(path: &Path) -> bool {
+    path.join("Cargo.toml").is_file()
+        && path.join("target.json").is_file()
+        && path.join("src/main.rs").is_file()
+}
+
+fn discover_kernel_root(blueprint_root: &Path) -> Option<PathBuf> {
+    if let Some(root) = env_path(TRUEOS_BLUEPRINT_KERNEL_ROOT_ENV)
+        .filter(|path| path.join("Cargo.toml").is_file() && path.join("vendor").is_dir())
+    {
+        return Some(root);
+    }
+
+    let sibling = blueprint_root.parent()?.join("TRUEOS");
+    (sibling.join("Cargo.toml").is_file() && sibling.join("vendor").is_dir()).then_some(sibling)
+}
+
+fn env_path(name: &str) -> Option<PathBuf> {
+    let value = env::var_os(name)?;
+    if value.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(value);
+    if path.is_absolute() {
+        Some(path)
+    } else {
+        env::current_dir().ok().map(|cwd| cwd.join(path))
     }
 }
 

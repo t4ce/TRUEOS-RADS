@@ -16,6 +16,8 @@ const state = {
   palette: fallbackPalette,
   templates: [],
   templatesLoaded: false,
+  projects: [],
+  projectsLoaded: false,
   selectedControlId: null,
   selectedWindowId: null,
   selectedPaletteCategory: "Basics",
@@ -34,6 +36,7 @@ const state = {
   uiPersistTimer: null,
   drag: null,
   newProjectOpen: false,
+  openProjectOpen: false,
   newProjectDraft: { name: "Hello UI2", templateId: "" },
   glyphPickerOpen: false,
   trueosTwemoji: { available: false, fontStack: "Twitter Color Emoji, Twemoji Mozilla, Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji", atlas: null, atlasPng: "" },
@@ -112,17 +115,20 @@ async function optionalApi(path, options = {}, fallbackMessage = "") {
 
 async function init() {
   try {
-    const [palette, project, jobs, templates, twemoji] = await Promise.all([
+    const [palette, project, jobs, templates, twemoji, projects] = await Promise.all([
       api("/api/palette"),
       api("/api/project"),
       optionalApi("/api/jobs", {}, "Job history unavailable until the backend is running."),
       probeApi("/api/templates"),
       probeApi("/api/assets/trueos-twemoji"),
+      probeApi("/api/projects"),
     ]);
     state.palette = normalizePalette(palette);
     state.templates = normalizeTemplates(templates);
+    state.projects = normalizeProjects(projects);
     await hydrateTrueosTwemoji(twemoji);
     state.templatesLoaded = true;
+    state.projectsLoaded = Boolean(projects);
     ensurePaletteCategory();
     state.project = project;
     state.jobs = Array.isArray(jobs) ? jobs : [];
@@ -136,6 +142,8 @@ async function init() {
     state.logs.push("Backend not reachable; running in local design mode.");
     state.project = createLocalProject("Local UI2 App");
     state.selectedWindowId = state.project.windows[0].id;
+    state.projects = [];
+    state.projectsLoaded = false;
     ensurePaletteCategory();
     hydrateProjectEditors();
     loadAssetsForProject();
@@ -172,6 +180,17 @@ function closeNewProject() {
   render();
 }
 
+function openProjectPicker() {
+  state.openProjectOpen = true;
+  refreshProjects().finally(render);
+  render();
+}
+
+function closeOpenProject() {
+  state.openProjectOpen = false;
+  render();
+}
+
 async function newProject(form) {
   const data = new FormData(form);
   const name = String(data.get("projectName") || "").trim();
@@ -186,6 +205,7 @@ async function newProject(form) {
     state.project = response.project;
     state.backendOnline = true;
     state.logs.push(`Created ${response.project.name}`);
+    await refreshProjects();
   } catch (error) {
     state.project = createLocalProject(name);
     applyTemplateToLocalProject(template);
@@ -197,6 +217,35 @@ async function newProject(form) {
   hydrateProjectEditors(template);
   loadAssetsForProject();
   loadRustFilesForProject();
+  render();
+}
+
+async function loadProject(path) {
+  if (!path) return;
+  try {
+    const response = await api("/api/project/load", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    });
+    state.project = response.project;
+    state.backendOnline = true;
+    state.selectedWindowId = state.project.windows?.[0]?.id || null;
+    state.selectedControlId = null;
+    state.selectedRustPath = "src/main.rs";
+    state.activeEditor = isUi2Project(state.project) ? "design" : "rust";
+    state.openProjectOpen = false;
+    hydrateProjectEditors();
+    state.logs.push(`Loaded ${state.project.name}`);
+    render();
+    await Promise.all([
+      loadAssetsForProject(),
+      loadRustFilesForProject(),
+      refreshJobs(),
+      refreshProjects(),
+    ]);
+  } catch (error) {
+    state.logs.push(`Project load failed; ${shortError(error)}`);
+  }
   render();
 }
 
@@ -284,6 +333,13 @@ async function refreshJobs() {
   if (Array.isArray(jobs)) state.jobs = jobs;
 }
 
+async function refreshProjects() {
+  const payload = await probeApi("/api/projects");
+  state.projects = normalizeProjects(payload);
+  state.projectsLoaded = Boolean(payload);
+  return state.projects;
+}
+
 function scheduleAutoJob(reason) {
   if (!state.fullAuto || !state.project) return;
   window.clearTimeout(state.autoTimer);
@@ -329,6 +385,7 @@ function render() {
           <span>TRUEOS RADS</span>
         </div>
         <button class="primary" data-action="new">New App</button>
+        <button data-action="open-project">Open</button>
         <div class="topbar-divider"></div>
         <button data-job="check">Check</button>
         <button data-job="build">Build</button>
@@ -372,6 +429,7 @@ function render() {
         <div class="jobs">${renderJobs()}</div>
       </section>
       ${renderNewProjectModal()}
+      ${renderOpenProjectModal()}
       ${renderGlyphPickerModal()}
     </main>`;
 
@@ -661,6 +719,44 @@ function renderNewProjectModal() {
     </div>`;
 }
 
+function renderOpenProjectModal() {
+  if (!state.openProjectOpen) return "";
+  const projects = state.projects || [];
+  return `
+    <div class="modal-backdrop">
+      <div class="open-project-modal">
+        <div class="modal-head">
+          <strong>Open RADS Project</strong>
+          <button type="button" data-action="cancel-open-project">Close</button>
+        </div>
+        <div class="project-list">
+          ${projects.length ? projects.map((project) => `
+            <button type="button" class="project-choice ${isActiveProjectSummary(project) ? "active" : ""}" data-load-project="${escapeHtml(project.path)}">
+              <span class="project-choice-main">
+                <b>${escapeHtml(project.displayName || project.name)}</b>
+                <small>${escapeHtml(labelAppKind(project.appKind))}</small>
+              </span>
+              <span class="project-choice-meta">
+                <small>${escapeHtml(project.appId)}</small>
+                <small>${escapeHtml(project.path)}</small>
+                <small>${escapeHtml(`${project.windows} window${project.windows === 1 ? "" : "s"}${project.version ? `, v${project.version}` : ""}`)}</small>
+              </span>
+            </button>
+          `).join("") : `
+            <div class="empty-state">
+              <b>No persisted projects found</b>
+              <span>Saved RADS projects appear here once they exist in rads-workspace.</span>
+            </div>
+          `}
+        </div>
+        <div class="modal-actions">
+          <span class="modal-status">${state.projectsLoaded ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : "Project index unavailable"}</span>
+          <button type="button" data-action="refresh-projects">Refresh</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderGlyphPickerModal() {
   if (!state.glyphPickerOpen) return "";
   const glyphs = titleGlyphChoices();
@@ -906,8 +1002,18 @@ function renderJobs() {
 
 function bindEvents() {
   app.querySelector("[data-action='new']")?.addEventListener("click", openNewProject);
+  app.querySelector("[data-action='open-project']")?.addEventListener("click", openProjectPicker);
   app.querySelectorAll("[data-action='cancel-new']").forEach((button) => {
     button.addEventListener("click", closeNewProject);
+  });
+  app.querySelectorAll("[data-action='cancel-open-project']").forEach((button) => {
+    button.addEventListener("click", closeOpenProject);
+  });
+  app.querySelector("[data-action='refresh-projects']")?.addEventListener("click", () => {
+    refreshProjects().finally(render);
+  });
+  app.querySelectorAll("[data-load-project]").forEach((button) => {
+    button.addEventListener("click", () => loadProject(button.dataset.loadProject));
   });
   app.querySelector("[data-new-project-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1174,6 +1280,28 @@ function normalizeTemplates(payload) {
   });
 }
 
+function normalizeProjects(payload) {
+  const list = Array.isArray(payload) ? payload : payload?.projects || payload?.items || [];
+  if (!Array.isArray(list)) return [];
+  return list.map((project, index) => {
+    const slug = String(project.slug || project.blueprint?.slug || project.name || `project-${index + 1}`);
+    const path = String(project.path || project.project_file || project.projectFile || `${slug}/rads.project.json`);
+    return {
+      name: String(project.name || project.display_name || project.displayName || slug),
+      slug,
+      path,
+      root: String(project.root || ""),
+      appKind: String(project.app_kind || project.appKind || "ui2"),
+      appId: String(project.app_id || project.appId || project.blueprint?.app_id || "dev.trueos.local"),
+      displayName: String(project.display_name || project.displayName || project.name || slug),
+      version: String(project.version || project.blueprint?.version || ""),
+      windows: Number(project.windows || 0),
+      modifiedUnixMs: Number(project.modified_unix_ms || project.modifiedUnixMs || 0),
+      raw: project,
+    };
+  });
+}
+
 async function hydrateTrueosTwemoji(payload) {
   const asset = payload || {};
   state.trueosTwemoji = {
@@ -1206,6 +1334,13 @@ function labelAppKind(kind) {
   if (normalized === "service") return "Background Service";
   if (normalized === "shell") return "Shell App";
   return "UI2 App";
+}
+
+function isActiveProjectSummary(project) {
+  const active = state.project;
+  if (!active || !project) return false;
+  if (project.root && active.root && project.root === String(active.root)) return true;
+  return Boolean(project.slug && active.slug && project.slug === active.slug);
 }
 
 function titleGlyphChoices() {

@@ -49,7 +49,7 @@ rads-workspace/<project-slug>/
 | Designer | Provide grouped palettes, snap/align helpers, object-inspector data, and request-shaped control mutations. | `src/designer.rs` |
 | Generator | Create project directories and write generated JSON, Cargo, Rust, and manifest files. | `src/generator.rs` |
 | Templates | Render the generated app's `Cargo.toml`, UI2 layout, Rust modules, package manifest, and README. | `src/templates.rs` |
-| Jobs | Track recent jobs, run `cargo check`/`cargo build`, simulate packaging, and broadcast SSE updates. | `src/jobs.rs` |
+| Jobs | Track recent jobs, run `cargo check`/`cargo build`, run the Blueprints packer when available, and broadcast SSE updates. | `src/jobs.rs` |
 | Watcher | Watch a project tree and schedule full-auto jobs after create/modify events when runtime watch is enabled. | `src/watcher.rs` |
 
 ## State Model
@@ -63,8 +63,10 @@ The server owns an `AppState` with:
 - `full_auto`: an atomic toggle used by watcher-driven automation.
 
 Only one project is active at a time. Creating or loading a project replaces
-the active pointer and refreshes the optional watcher. Adding controls, saving,
-and updating the main window rewrite generated project files.
+the active pointer and refreshes the optional watcher. The Open Project flow is
+backed by `GET /api/projects`, which scans persisted
+`rads-workspace/*/rads.project.json` files. Adding controls, saving, and
+updating the main window rewrite generated project files.
 
 ## Generated Project Contract
 
@@ -98,9 +100,9 @@ queued -> running -> failed
 
 Each transition or log line is stored on the job and emitted as an SSE `job`
 event. The recent-job buffer keeps the latest 100 jobs. `check` and `build`
-run Cargo in the generated project directory. `pack` currently validates the
-expected plan through simulated pack steps. `auto` runs check first and then
-pack if check succeeds.
+run Cargo in the generated project directory. `pack` writes the package plan
+and streams `trueos-blueprint` when a Blueprints checkout is discoverable.
+`auto` runs check first and then pack if check succeeds.
 
 ## Design Constraints
 
@@ -114,5 +116,5 @@ pack if check succeeds.
 
 - Only one active project is held in memory.
 - Object-inspector data is modeled in Rust; the browser UI may lag newer inspector/editing helpers.
-- Packaging is simulated rather than producing a final `.tapp`.
+- Package/install verification is still shallow after `.bp` creation.
 - API errors are plain strings; a structured error envelope would make clients easier to harden.

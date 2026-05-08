@@ -1,4 +1,5 @@
 target/
+rads-workspace/*/dist/
 .env
 .env.local
 .env.*.local

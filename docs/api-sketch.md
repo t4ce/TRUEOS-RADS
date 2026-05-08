@@ -18,6 +18,33 @@ tests, and small local automation.
 
 Returns the active `RadsProject` or `null`.
 
+### `GET /api/projects`
+
+Scans `rads-workspace/*/rads.project.json` and returns the persisted project
+index used by the Open Project flow.
+
+Response:
+
+```json
+{
+  "workspace": "/path/to/rads-workspace",
+  "projects": [
+    {
+      "name": "Hello UI2",
+      "slug": "hello-ui2",
+      "path": "hello-ui2/rads.project.json",
+      "root": "/path/to/rads-workspace/hello-ui2",
+      "app_kind": "ui2",
+      "app_id": "dev.trueos.hello-ui2",
+      "display_name": "Hello UI2",
+      "version": "0.1.0",
+      "windows": 1,
+      "modified_unix_ms": 1778200000000
+    }
+  ]
+}
+```
+
 ### `POST /api/project`
 
 Creates a project under `rads-workspace/<slug>/`, writes generated files, makes

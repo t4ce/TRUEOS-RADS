@@ -24,6 +24,7 @@ use std::convert::Infallible;
 use std::path::{Path as FsPath, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::UNIX_EPOCH;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::sync::broadcast::error::RecvError;
@@ -63,6 +64,26 @@ pub struct LoadProjectRequest {
 #[derive(Debug, Serialize)]
 pub struct ProjectResponse {
     pub project: RadsProject,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectsResponse {
+    pub workspace: PathBuf,
+    pub projects: Vec<ProjectSummary>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectSummary {
+    pub name: String,
+    pub slug: String,
+    pub path: PathBuf,
+    pub root: PathBuf,
+    pub app_kind: AppKind,
+    pub app_id: String,
+    pub display_name: String,
+    pub version: String,
+    pub windows: usize,
+    pub modified_unix_ms: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,6 +242,7 @@ pub async fn serve(workspace: PathBuf) -> anyhow::Result<()> {
                 .post(write_project_file_path)
                 .put(write_project_file_path),
         )
+        .route("/api/projects", get(list_projects))
         .route("/api/project", get(active_project).post(new_project))
         .route("/api/project/assets", get(list_assets).post(import_asset))
         .route("/api/project/files", get(list_project_files))
@@ -330,13 +352,68 @@ async fn localcoder_status() -> Json<localcoder::LocalCoderStatusResponse> {
 }
 
 async fn localcoder_chat(
+    State(state): State<AppState>,
     Json(request): Json<localcoder::LocalCoderChatRequest>,
 ) -> Result<Json<localcoder::LocalCoderChatResponse>, (StatusCode, Json<localcoder::LocalCoderError>)>
 {
-    localcoder::chat(request)
+    let context = localcoder_execution_context(&state).await;
+    localcoder::chat_with_context(request, context)
         .await
         .map(Json)
         .map_err(|err| (localcoder_status_code(err.kind), Json(err)))
+}
+
+async fn localcoder_execution_context(
+    state: &AppState,
+) -> Option<localcoder::LocalCoderExecutionContext> {
+    let project = state.active.lock().await.clone()?;
+    let root = project.root.clone();
+    let root_text = root.to_string_lossy().into_owned();
+    let windows = if project.windows.is_empty() {
+        "none".to_string()
+    } else {
+        project
+            .windows
+            .iter()
+            .map(|window| format!("{} ({})", window.name, window.caption))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+
+    Some(localcoder::LocalCoderExecutionContext {
+        cwd: Some(root),
+        prompt_prelude: Some(format!(
+            "You are running inside TRUEOS RADS.\n\
+             Active project: {}\n\
+             Project slug: {}\n\
+             Project kind: {}\n\
+             Project root: {}\n\
+             App id: {}\n\
+             UI2 windows: {}\n\
+             Your file, search, shell, git, and LSP tools run with the active project root as cwd.\n\
+             Tool groups: Files(Read/Edit/Write), Search(Glob/Grep), Shell(Bash uses bash -lc), Web(WebFetch/WebSearch), LSP, Plan, Skills. Git is currently available through Bash git commands.\n\
+             Inspect project files directly when the user asks about this app.",
+            project.name,
+            project.slug,
+            project.app_kind.label(),
+            root_text,
+            project.blueprint.app_id,
+            windows
+        )),
+        env: vec![
+            ("TRUEOS_RADS_ACTIVE_PROJECT".to_string(), project.name),
+            ("TRUEOS_RADS_PROJECT_SLUG".to_string(), project.slug),
+            (
+                "TRUEOS_RADS_PROJECT_KIND".to_string(),
+                project.app_kind.runtime().to_string(),
+            ),
+            ("TRUEOS_RADS_PROJECT_ROOT".to_string(), root_text),
+            (
+                "TRUEOS_RADS_PROJECT_APP_ID".to_string(),
+                project.blueprint.app_id,
+            ),
+        ],
+    })
 }
 
 async fn active_project(State(state): State<AppState>) -> impl IntoResponse {
@@ -490,6 +567,78 @@ async fn new_project(
     *state.active.lock().await = Some(project.clone());
     refresh_watch(&state, Some(project.root.clone())).await?;
     Ok(Json(NewProjectResponse { project }))
+}
+
+async fn list_projects(State(state): State<AppState>) -> Result<Json<ProjectsResponse>, String> {
+    let mut entries = tokio::fs::read_dir(&state.workspace)
+        .await
+        .map_err(|err| format!("failed to read {}: {err}", state.workspace.display()))?;
+    let mut projects = Vec::new();
+
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|err| format!("failed to scan {}: {err}", state.workspace.display()))?
+    {
+        let Ok(file_type) = entry.file_type().await else {
+            continue;
+        };
+        if !file_type.is_dir() {
+            continue;
+        }
+
+        let root = entry.path();
+        let project_file = root.join("rads.project.json");
+        let Ok(metadata) = tokio::fs::metadata(&project_file).await else {
+            continue;
+        };
+        if !metadata.is_file() {
+            continue;
+        }
+
+        let Ok(body) = tokio::fs::read_to_string(&project_file).await else {
+            continue;
+        };
+        let Ok(mut project) = serde_json::from_str::<RadsProject>(&body) else {
+            continue;
+        };
+        project.root = root.clone();
+
+        let path = project_file
+            .strip_prefix(&state.workspace)
+            .unwrap_or(&project_file)
+            .to_path_buf();
+        let modified_unix_ms = metadata
+            .modified()
+            .ok()
+            .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+            .and_then(|duration| u64::try_from(duration.as_millis()).ok());
+
+        projects.push(ProjectSummary {
+            name: project.name,
+            slug: project.slug,
+            path,
+            root,
+            app_kind: project.app_kind,
+            app_id: project.blueprint.app_id,
+            display_name: project.blueprint.display_name,
+            version: project.blueprint.version,
+            windows: project.windows.len(),
+            modified_unix_ms,
+        });
+    }
+
+    projects.sort_by(|left, right| {
+        right
+            .modified_unix_ms
+            .cmp(&left.modified_unix_ms)
+            .then_with(|| left.display_name.cmp(&right.display_name))
+    });
+
+    Ok(Json(ProjectsResponse {
+        workspace: state.workspace,
+        projects,
+    }))
 }
 
 async fn load_project(

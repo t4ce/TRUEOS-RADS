@@ -5,7 +5,7 @@ mod localcoder;
 mod unix_tests {
     use super::localcoder::{
         LOCALCODER_ARGS_ENV, LOCALCODER_BIN_ENV, LocalCoderBinSource, LocalCoderChatRequest,
-        LocalCoderCommandStrategy, chat, status,
+        LocalCoderCommandStrategy, LocalCoderExecutionContext, chat, chat_with_context, status,
     };
     use std::env;
     use std::ffi::{OsStr, OsString};
@@ -87,6 +87,18 @@ mod unix_tests {
             response.bin_path.as_deref(),
             Some(fs::canonicalize(&fake).unwrap().to_string_lossy().as_ref())
         );
+        assert!(
+            response
+                .tools
+                .iter()
+                .any(|tool| tool.id == "files" && tool.available)
+        );
+        assert!(
+            response
+                .tools
+                .iter()
+                .any(|tool| tool.id == "git" && tool.mode == "via_shell")
+        );
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -146,6 +158,48 @@ mod unix_tests {
             response.strategy,
             LocalCoderCommandStrategy::EnvArgsPromptArg
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn chat_context_sets_cwd_and_prepends_prompt_context() {
+        let temp = temp_dir("chat-context");
+        let project = temp.join("hello-ui2");
+        fs::create_dir_all(&project).unwrap();
+        let fake = temp.join("fake-localcoder");
+        write_executable(
+            &fake,
+            "#!/bin/sh\npwd\nprintf 'arg=%s\\n' \"$1\"\nprintf 'env_root=%s\\n' \"$TRUEOS_RADS_PROJECT_ROOT\"\n",
+        );
+        let env = ScopedEnv::new(&temp);
+        env.set(LOCALCODER_BIN_ENV, fake.as_os_str());
+        env.remove(LOCALCODER_ARGS_ENV);
+
+        let response = chat_with_context(
+            LocalCoderChatRequest {
+                prompt: "can you see my app?".to_string(),
+                timeout_ms: Some(5_000),
+            },
+            Some(LocalCoderExecutionContext {
+                cwd: Some(project.clone()),
+                prompt_prelude: Some("Active project: Hello UI2".to_string()),
+                env: vec![(
+                    "TRUEOS_RADS_PROJECT_ROOT".to_string(),
+                    project.to_string_lossy().into_owned(),
+                )],
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            response
+                .text
+                .contains(&project.to_string_lossy().into_owned())
+        );
+        assert!(response.text.contains("Active project: Hello UI2"));
+        assert!(response.text.contains("User prompt:"));
+        assert!(response.text.contains("can you see my app?"));
+        assert!(response.text.contains("env_root="));
     }
 
     #[tokio::test(flavor = "current_thread")]

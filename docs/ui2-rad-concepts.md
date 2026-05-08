@@ -135,11 +135,11 @@ This makes capability elevation explicit in diffs when the app grows.
 The `auto` job is the RAD loop in one command:
 
 ```text
-generate files -> cargo check -> package plan
+generate files -> cargo check -> package plan -> .bp artifact when the packer is available
 ```
 
 Today, generation happens when the project changes, `cargo check` runs for
 `check` and `auto`, watcher-driven full-auto can be toggled through runtime
-state, and packaging is simulated. The intended future behavior is for file
-watching, regeneration, checking, and real package output to form one continuous
-feedback loop.
+state, and packaging streams the Blueprints packer when RADS can discover it.
+The intended future behavior is for install verification and kernel-side
+inspection to close the loop after artifact creation.

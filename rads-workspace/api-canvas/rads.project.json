@@ -3,6 +3,7 @@
   "name": "API Canvas",
   "slug": "api-canvas",
   "root": "/home/t4ce/REPOS/TRUEOS RADS/rads-workspace/api-canvas",
+  "app_kind": "ui2",
   "blueprint": {
     "schema": "trueos.app.blueprint/v1",
     "app_id": "dev.trueos.api-canvas",

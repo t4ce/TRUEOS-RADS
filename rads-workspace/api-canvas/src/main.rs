@@ -2,13 +2,14 @@ mod events;
 mod ui;
 
 fn main() {
-    let Some(window) = ui::create_main_window() else {
-        v::vio::println("failed to create UI2 window");
+    let windows = ui::create_all_windows();
+    if windows.is_empty() {
+        v::vshell::line("failed to create UI2 windows");
         return;
-    };
+    }
 
     events::wire_main_window();
-    v::vio::println("started API Canvas");
+    v::vshell::line("started API Canvas");
 
-    let _window = window;
+    let _windows = windows;
 }

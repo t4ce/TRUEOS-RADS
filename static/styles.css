@@ -1019,6 +1019,7 @@ input {
 }
 
 .new-project-modal,
+.open-project-modal,
 .glyph-modal {
   display: grid;
   gap: 12px;
@@ -1032,6 +1033,10 @@ input {
 
 .glyph-modal {
   width: min(520px, calc(100vw - 32px));
+}
+
+.open-project-modal {
+  width: min(680px, calc(100vw - 32px));
 }
 
 .modal-head,
@@ -1060,6 +1065,61 @@ input {
   justify-content: end;
   border-top: 1px solid #283035;
   padding-top: 12px;
+}
+
+.modal-status {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.project-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 520px);
+  overflow: auto;
+}
+
+.project-choice {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(240px, 1.4fr);
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 70px;
+  padding: 10px;
+  text-align: left;
+  align-items: center;
+}
+
+.project-choice.active {
+  border-color: #438465;
+  background: #183427;
+}
+
+.project-choice-main,
+.project-choice-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.project-choice-main b,
+.project-choice-main small,
+.project-choice-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-choice-main b {
+  font-size: 14px;
+}
+
+.project-choice-main small,
+.project-choice-meta small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .template-notes {

@@ -1,5 +1,6 @@
 {
   "app_id": "dev.trueos.api-canvas",
+  "app_kind": "ui2",
   "artifacts": [
     {
       "kind": "binary",

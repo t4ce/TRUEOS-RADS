@@ -282,6 +282,7 @@
     var form;
     var input;
     var sendButton;
+    var resizeHandle;
     var state = {
       available: false,
       activeTab: "chat",
@@ -331,7 +332,12 @@
       ":host, :host * { box-sizing: border-box; }",
       "button, input, textarea { font: inherit; }",
       ".lc-panel {",
-      "  width: min(390px, calc(100vw - 32px));",
+      "  position: relative;",
+      "  width: min(780px, calc(100vw - 32px));",
+      "  height: min(390px, calc(100vh - 36px));",
+      "  min-width: min(360px, calc(100vw - 32px));",
+      "  min-height: 320px;",
+      "  max-width: calc(100vw - 32px);",
       "  max-height: min(640px, calc(100vh - 36px));",
       "  display: grid;",
       "  grid-template-rows: auto auto auto minmax(190px, 1fr) auto;",
@@ -344,11 +350,14 @@
       "}",
       ".lc-panel.is-collapsed {",
       "  grid-template-rows: auto auto;",
-      "  width: min(310px, calc(100vw - 32px));",
+      "  width: min(310px, calc(100vw - 32px)) !important;",
+      "  height: auto !important;",
+      "  min-height: 0;",
       "}",
       ".lc-panel.is-collapsed .lc-tabs,",
       ".lc-panel.is-collapsed .lc-content,",
       ".lc-panel.is-collapsed .lc-form { display: none; }",
+      ".lc-panel.is-collapsed .lc-resize { display: none; }",
       ".lc-drag {",
       "  height: 18px;",
       "  display: grid;",
@@ -477,7 +486,6 @@
       ".lc-transcript {",
       "  height: 100%;",
       "  min-height: 190px;",
-      "  max-height: 410px;",
       "  overflow-y: auto;",
       "  display: flex;",
       "  flex-direction: column;",
@@ -518,8 +526,8 @@
       "}",
       ".lc-tool {",
       "  min-height: 34px;",
-      "  display: flex;",
-      "  align-items: center;",
+      "  display: grid;",
+      "  grid-template-columns: auto minmax(0, 1fr);",
       "  gap: 8px;",
       "  padding: 7px 9px;",
       "  color: var(--lc-muted-2);",
@@ -528,7 +536,26 @@
       "  border-radius: 6px;",
       "  font-size: 12px;",
       "}",
+      ".lc-tool.is-unavailable { opacity: 0.58; }",
       ".lc-tool input { accent-color: var(--lc-accent); }",
+      ".lc-tool-name {",
+      "  display: grid;",
+      "  gap: 2px;",
+      "  min-width: 0;",
+      "}",
+      ".lc-tool-name b {",
+      "  overflow: hidden;",
+      "  text-overflow: ellipsis;",
+      "  white-space: nowrap;",
+      "  font-size: 12px;",
+      "}",
+      ".lc-tool-name small {",
+      "  overflow: hidden;",
+      "  text-overflow: ellipsis;",
+      "  white-space: nowrap;",
+      "  color: var(--lc-muted);",
+      "  font-size: 11px;",
+      "}",
       ".lc-kv {",
       "  display: grid;",
       "  grid-template-columns: 86px minmax(0, 1fr);",
@@ -603,6 +630,30 @@
       "  background: #5b806c;",
       "  border-color: #5b806c;",
       "}",
+      ".lc-resize {",
+      "  position: absolute;",
+      "  left: 0;",
+      "  bottom: 0;",
+      "  width: 22px;",
+      "  height: 22px;",
+      "  z-index: 2;",
+      "  cursor: nesw-resize;",
+      "  touch-action: none;",
+      "}",
+      ".lc-resize::before {",
+      "  content: '';",
+      "  position: absolute;",
+      "  left: 5px;",
+      "  bottom: 5px;",
+      "  width: 10px;",
+      "  height: 10px;",
+      "  border-left: 2px solid var(--lc-line-strong);",
+      "  border-bottom: 2px solid var(--lc-line-strong);",
+      "  opacity: 0.8;",
+      "}",
+      ".lc-resize:hover::before, .lc-resize:focus-visible::before {",
+      "  border-color: var(--lc-accent);",
+      "}",
       "@media (max-width: 520px) {",
       "  :host {",
       "    right: 8px;",
@@ -611,8 +662,11 @@
       "  }",
       "  .lc-panel, .lc-panel.is-collapsed {",
       "    width: 100%;",
+      "    height: auto;",
+      "    min-height: 0;",
       "    max-height: calc(100vh - 16px);",
       "  }",
+      "  .lc-resize { display: none; }",
       "  .lc-form { grid-template-columns: 1fr; }",
       "  .lc-send { width: 100%; }",
       "}",
@@ -650,6 +704,7 @@
     form = createElement("form", "lc-form");
     input = createElement("textarea", "lc-input");
     sendButton = createElement("button", "lc-send", "Send");
+    resizeHandle = createElement("div", "lc-resize");
 
     title.id = "localcoder-chat-title";
     statusDot.setAttribute("aria-hidden", "true");
@@ -674,6 +729,7 @@
     input.autocomplete = "off";
     input.spellcheck = true;
     input.setAttribute("aria-label", "Prompt for localcoder");
+    resizeHandle.setAttribute("aria-hidden", "true");
     sendButton.type = "submit";
     sendButton.disabled = true;
 
@@ -686,12 +742,13 @@
     modelPanel.append(modelDetails);
     content.append(chatPanel, toolsPanel, modelPanel);
     form.append(input, sendButton);
-    panel.append(dragHandle, header, tabBar, content, form);
+    panel.append(dragHandle, header, tabBar, content, form, resizeHandle);
     root.append(style, panel);
 
-    renderTools();
+    renderTools(null);
     renderModelDetails(null);
     makeDraggable(host, dragHandle);
+    makeResizable(host, panel, resizeHandle);
 
     function scrollTranscript() {
       transcript.scrollTop = transcript.scrollHeight;
@@ -771,17 +828,57 @@
       }
     }
 
-    function renderTools() {
-      ["Files", "Search", "Shell", "Web", "Git", "LSP", "Plan", "Skills"].forEach(function (tool) {
+    function renderTools(payload) {
+      toolList.textContent = "";
+      localcoderTools(payload).forEach(function (tool) {
         var label = createElement("label", "lc-tool");
         var checkbox = createElement("input");
-        var name = createElement("span", "", tool);
+        var name = createElement("span", "lc-tool-name");
+        var title = createElement("b", "", tool.label);
+        var detail = createElement("small", "", tool.detail);
 
+        if (!tool.available) {
+          label.className += " is-unavailable";
+        }
         checkbox.type = "checkbox";
-        checkbox.checked = true;
+        checkbox.checked = tool.available;
         checkbox.disabled = true;
+        name.append(title, detail);
+        label.title = tool.fullDetail || tool.detail;
         label.append(checkbox, name);
         toolList.appendChild(label);
+      });
+    }
+
+    function localcoderTools(payload) {
+      var tools = payload && Array.isArray(payload.tools) ? payload.tools : null;
+
+      if (!tools) {
+        return [
+          { label: "Files", available: false, detail: "Read, Edit, Write" },
+          { label: "Search", available: false, detail: "Glob, Grep" },
+          { label: "Shell", available: false, detail: "Bash" },
+          { label: "Web", available: false, detail: "WebFetch, WebSearch" },
+          { label: "Git", available: false, detail: "via Bash git" },
+          { label: "LSP", available: false, detail: "Lsp" },
+          { label: "Plan", available: false, detail: "Plan tools" },
+          { label: "Skills", available: false, detail: "Skill" }
+        ];
+      }
+
+      return tools.map(function (tool) {
+        var toolNames = Array.isArray(tool.tools) ? tool.tools.join(", ") : "";
+        var detail = toolNames || normalizeText(tool.detail).trim() || normalizeText(tool.mode).trim();
+        var mode = normalizeText(tool.mode).trim();
+        if (mode === "via_shell") {
+          detail = detail ? detail + " via Shell" : "via Shell";
+        }
+        return {
+          label: normalizeText(tool.label || tool.id).trim() || "Tool",
+          available: tool.available !== false,
+          detail: detail,
+          fullDetail: normalizeText(tool.detail).trim() || detail
+        };
       });
     }
 
@@ -832,6 +929,7 @@
           var label;
 
           renderModelDetails(payload);
+          renderTools(payload);
           state.available = isAvailableStatus(payload);
           if (state.available) {
             setStatus("ready", statusLabelFromPayload(payload));
@@ -847,6 +945,7 @@
         .catch(function (error) {
           state.available = false;
           renderModelDetails(null);
+          renderTools(null);
           setStatus(
             "offline",
             isMissingRoute(error) ? "Localcoder unavailable" : "Localcoder status unknown"
@@ -983,6 +1082,76 @@
 
     handle.addEventListener("pointercancel", function () {
       dragging = false;
+    });
+  }
+
+  function makeResizable(host, panel, handle) {
+    var resizing = false;
+    var startX = 0;
+    var startY = 0;
+    var startWidth = 0;
+    var startHeight = 0;
+    var rightEdge = 0;
+    var bottomEdge = 0;
+    var usesLeftTop = false;
+    var minWidth = 360;
+    var minHeight = 320;
+    var margin = 8;
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    handle.addEventListener("pointerdown", function (event) {
+      var rect = panel.getBoundingClientRect();
+
+      resizing = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startWidth = rect.width;
+      startHeight = rect.height;
+      rightEdge = rect.right;
+      bottomEdge = rect.bottom;
+      usesLeftTop = host.style.right === "auto" || host.style.bottom === "auto";
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    handle.addEventListener("pointermove", function (event) {
+      var width;
+      var height;
+      var maxWidth;
+      var maxHeight;
+
+      if (!resizing) {
+        return;
+      }
+
+      maxWidth = Math.max(minWidth, rightEdge - margin);
+      maxHeight = Math.max(minHeight, bottomEdge - margin);
+      width = clamp(startWidth + startX - event.clientX, minWidth, maxWidth);
+      height = clamp(startHeight + startY - event.clientY, minHeight, maxHeight);
+
+      panel.style.width = width + "px";
+      panel.style.height = height + "px";
+
+      if (usesLeftTop) {
+        host.style.left = clamp(rightEdge - width, margin, window.innerWidth - width - margin) + "px";
+        host.style.top = clamp(bottomEdge - height, margin, window.innerHeight - height - margin) + "px";
+        host.style.right = "auto";
+        host.style.bottom = "auto";
+      }
+    });
+
+    handle.addEventListener("pointerup", function (event) {
+      resizing = false;
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+    });
+
+    handle.addEventListener("pointercancel", function () {
+      resizing = false;
     });
   }
 

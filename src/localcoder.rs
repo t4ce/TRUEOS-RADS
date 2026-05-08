@@ -5,6 +5,7 @@
 //! backend crate wires this in.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -16,8 +17,10 @@ use tokio::process::Command;
 
 pub const LOCALCODER_BIN_ENV: &str = "LOCALCODER_BIN";
 pub const LOCALCODER_ARGS_ENV: &str = "LOCALCODER_ARGS";
+pub const LOCALCODER_HOME_ENV: &str = "LOCALCODER_HOME";
 pub const DEFAULT_CHAT_TIMEOUT_MS: u64 = 120_000;
 
+const OPENAI_API_KEY_ENV: &str = "OPENAI_API_KEY";
 const PROMPT_PLACEHOLDER: &str = "{prompt}";
 const PATH_BINARY_NAME: &str = "localcoder";
 const RELATIVE_BIN_CANDIDATES: &[&str] = &[
@@ -58,7 +61,21 @@ pub struct LocalCoderStatusResponse {
     pub source: Option<LocalCoderBinSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<LocalCoderSettingsSummary>,
     pub checked_candidates: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LocalCoderSettingsSummary {
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    pub api_key: LocalCoderApiKeyState,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -83,6 +100,16 @@ pub enum LocalCoderCommandStrategy {
     DefaultPromptArg,
     EnvArgsStdin,
     EnvArgsPromptArg,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LocalCoderApiKeyState {
+    Env,
+    Missing,
+    NotRequired,
+    Settings,
+    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -132,12 +159,15 @@ pub async fn status() -> LocalCoderStatusResponse {
 
 pub fn status_sync() -> LocalCoderStatusResponse {
     let report = discover_binary();
+    let settings = settings_summary();
+    let settings_message = settings_status_message(settings.as_ref());
     match report.binary {
         Some(binary) => LocalCoderStatusResponse {
-            available: true,
+            available: settings_message.is_none(),
             bin_path: Some(path_to_string(&binary.path)),
             source: Some(binary.source),
-            message: None,
+            message: settings_message,
+            settings,
             checked_candidates: report.checked_candidates,
         },
         None => LocalCoderStatusResponse {
@@ -145,8 +175,18 @@ pub fn status_sync() -> LocalCoderStatusResponse {
             bin_path: None,
             source: None,
             message: Some("localcoder executable not found".to_string()),
+            settings,
             checked_candidates: report.checked_candidates,
         },
+    }
+}
+
+fn settings_status_message(settings: Option<&LocalCoderSettingsSummary>) -> Option<String> {
+    match settings.map(|settings| settings.api_key) {
+        Some(LocalCoderApiKeyState::Missing) => {
+            Some("OpenAI API key missing in .env.local".to_string())
+        }
+        _ => None,
     }
 }
 
@@ -207,6 +247,10 @@ async fn run_localcoder(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+
+    if let Some(home) = configured_localcoder_home() {
+        command.env("HOME", home);
+    }
 
     let mut child = command.spawn().map_err(|err| LocalCoderError {
         kind: LocalCoderErrorKind::SpawnFailed,
@@ -348,6 +392,86 @@ fn discover_binary() -> DiscoveryReport {
     DiscoveryReport {
         binary: None,
         checked_candidates,
+    }
+}
+
+fn settings_summary() -> Option<LocalCoderSettingsSummary> {
+    let home =
+        configured_localcoder_home().or_else(|| env_os_nonempty("HOME").map(PathBuf::from))?;
+    let path = home.join(".localcoder/settings.json");
+    let raw = fs::read_to_string(&path).ok()?;
+    let root: Value = serde_json::from_str(&raw).ok()?;
+    let empty = Value::Null;
+    let llm = root.get("llm").unwrap_or(&empty);
+
+    let provider = json_string(llm.get("type"))
+        .or_else(|| json_string(root.get("type")))
+        .or_else(|| legacy_provider(&root));
+    let legacy_section = provider.as_deref().and_then(|provider| root.get(provider));
+    let base_url = json_string(llm.get("base_url")).or_else(|| {
+        legacy_section.and_then(|section| {
+            json_string(section.get("base_url")).or_else(|| json_string(section.get("url")))
+        })
+    });
+    let model = json_string(llm.get("model"))
+        .or_else(|| legacy_section.and_then(|section| json_string(section.get("model"))));
+    let configured_api_key = json_string(llm.get("api_key"))
+        .or_else(|| legacy_section.and_then(|section| json_string(section.get("api_key"))));
+
+    Some(LocalCoderSettingsSummary {
+        path: path_to_string(&path),
+        api_key: api_key_state(provider.as_deref(), configured_api_key.as_deref()),
+        provider,
+        base_url,
+        model,
+    })
+}
+
+fn configured_localcoder_home() -> Option<PathBuf> {
+    env_os_nonempty(LOCALCODER_HOME_ENV).map(|home| {
+        let path = PathBuf::from(home);
+        if path.is_absolute() {
+            path
+        } else {
+            env::current_dir()
+                .map(|cwd| cwd.join(&path))
+                .unwrap_or(path)
+        }
+    })
+}
+
+fn legacy_provider(root: &Value) -> Option<String> {
+    ["openai", "lmstudio", "ollama"]
+        .into_iter()
+        .find(|provider| root.get(provider).and_then(Value::as_object).is_some())
+        .map(ToOwned::to_owned)
+}
+
+fn json_string(value: Option<&Value>) -> Option<String> {
+    value
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn api_key_state(
+    provider: Option<&str>,
+    configured_api_key: Option<&str>,
+) -> LocalCoderApiKeyState {
+    match provider {
+        Some("openai") => {
+            if configured_api_key.is_some() {
+                LocalCoderApiKeyState::Settings
+            } else if env_os_nonempty(OPENAI_API_KEY_ENV).is_some() {
+                LocalCoderApiKeyState::Env
+            } else {
+                LocalCoderApiKeyState::Missing
+            }
+        }
+        Some("ollama") | Some("lmstudio") => LocalCoderApiKeyState::NotRequired,
+        Some(_) => LocalCoderApiKeyState::Unknown,
+        None => LocalCoderApiKeyState::Unknown,
     }
 }
 

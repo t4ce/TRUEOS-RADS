@@ -1,0 +1,245 @@
+{
+  "id": "72f2ae65-f254-4680-a209-171db21d1d5f",
+  "name": "MainWindow",
+  "caption": "Hello UI2",
+  "title_twemoji": "💱",
+  "geometry": {
+    "x": 60,
+    "y": 60,
+    "w": 960,
+    "h": 640
+  },
+  "decorations": {
+    "titlebar": true,
+    "close": true,
+    "minimize": true,
+    "maximize": true,
+    "resizable": true,
+    "always_on_top": false
+  },
+  "options": {
+    "min_size": {
+      "width": 640,
+      "height": 420
+    },
+    "max_size": null,
+    "resize_mode": "both",
+    "scrollbars": "none",
+    "hit_test_visible": true,
+    "preserve_scale": true
+  },
+  "ui_description": {
+    "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Hello UI2</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>\n<body>\n  <main class=\"canvas-shell\" data-app-id=\"dev.trueos.hello-ui2\" data-template=\"canvas-app\">\n    <header>\n      <h1>Hello UI2</h1>\n      <button name=\"clearButton\" type=\"button\">Clear</button>\n    </header>\n    <canvas name=\"drawingCanvas\" width=\"720\" height=\"420\"></canvas>\n  </main>\n</body>\n</html>\n",
+    "css": "html,\nbody {\n  margin: 0;\n  min-height: 100%;\n  font-family: system-ui, sans-serif;\n  background: #eef2f5;\n  color: #17202a;\n}\n\n.canvas-shell {\n  display: grid;\n  gap: 14px;\n  padding: 24px;\n}\n\n.canvas-shell header {\n  align-items: center;\n  display: flex;\n  justify-content: space-between;\n}\n\ncanvas {\n  background: #ffffff;\n  border: 1px solid #9aa8b5;\n}\n"
+  },
+  "controls": [
+    {
+      "id": "4284298f-8dc9-45c8-a476-ae9eba0eb951",
+      "kind": "label",
+      "name": "titleLabel",
+      "caption": "Canvas workspace",
+      "geometry": {
+        "x": 24,
+        "y": 24,
+        "w": 220,
+        "h": 28
+      },
+      "properties": [
+        {
+          "key": "role",
+          "value": "heading"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_title_label_ready"
+        }
+      ]
+    },
+    {
+      "id": "cace2288-c65f-4f78-b719-a7321fdeed4c",
+      "kind": "button",
+      "name": "clearButton",
+      "caption": "Clear",
+      "geometry": {
+        "x": 812,
+        "y": 22,
+        "w": 96,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "variant",
+          "value": "secondary"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_clear_button_click"
+        }
+      ]
+    },
+    {
+      "id": "eef0b264-fa06-4aea-9efb-bb2d122d495e",
+      "kind": "canvas",
+      "name": "drawingCanvas",
+      "caption": "",
+      "geometry": {
+        "x": 24,
+        "y": 72,
+        "w": 884,
+        "h": 520
+      },
+      "properties": [
+        {
+          "key": "surface",
+          "value": "software"
+        },
+        {
+          "key": "background",
+          "value": "#ffffff"
+        }
+      ],
+      "events": [
+        {
+          "event": "draw",
+          "handler": "on_drawing_canvas_draw"
+        }
+      ]
+    },
+    {
+      "id": "6e721bb6-cb55-4530-8da3-1e71280f682c",
+      "kind": "button",
+      "name": "button1",
+      "caption": "Button",
+      "geometry": {
+        "x": 88,
+        "y": 96,
+        "w": 120,
+        "h": 34
+      },
+      "properties": [
+        {
+          "key": "enabled",
+          "value": "true"
+        },
+        {
+          "key": "default",
+          "value": "false"
+        },
+        {
+          "key": "tab-stop",
+          "value": "true"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_button1_click"
+        }
+      ]
+    },
+    {
+      "id": "d678a634-5168-4917-b6c0-b61019f736ef",
+      "kind": "check-box",
+      "name": "checkbox1",
+      "caption": "Check me",
+      "geometry": {
+        "x": 168,
+        "y": 168,
+        "w": 160,
+        "h": 30
+      },
+      "properties": [
+        {
+          "key": "checked",
+          "value": "false"
+        },
+        {
+          "key": "enabled",
+          "value": "true"
+        },
+        {
+          "key": "tab-stop",
+          "value": "true"
+        }
+      ],
+      "events": [
+        {
+          "event": "click",
+          "handler": "on_checkbox1_click"
+        }
+      ]
+    },
+    {
+      "id": "dc2cedd1-f5ac-4db2-bcb7-c3a41a1e1edd",
+      "kind": "text-box",
+      "name": "textbox1",
+      "caption": "Text Box",
+      "geometry": {
+        "x": 168,
+        "y": 324,
+        "w": 180,
+        "h": 32
+      },
+      "properties": [
+        {
+          "key": "placeholder",
+          "value": ""
+        },
+        {
+          "key": "read-only",
+          "value": "false"
+        },
+        {
+          "key": "max-length",
+          "value": "0"
+        },
+        {
+          "key": "tab-stop",
+          "value": "true"
+        }
+      ],
+      "events": [
+        {
+          "event": "change",
+          "handler": "on_textbox1_change"
+        }
+      ]
+    },
+    {
+      "id": "393d0dc2-5bd9-4ef5-a847-b55f096a86b7",
+      "kind": "label",
+      "name": "label1",
+      "caption": "Label",
+      "geometry": {
+        "x": 180,
+        "y": 288,
+        "w": 160,
+        "h": 24
+      },
+      "properties": [
+        {
+          "key": "auto-size",
+          "value": "true"
+        },
+        {
+          "key": "text-align",
+          "value": "left"
+        },
+        {
+          "key": "font-weight",
+          "value": "normal"
+        }
+      ],
+      "events": [
+        {
+          "event": "ready",
+          "handler": "on_label1_ready"
+        }
+      ]
+    }
+  ]
+}

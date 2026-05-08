@@ -18,6 +18,16 @@ cargo run
 
 Then open `http://127.0.0.1:7377`.
 
+## Localcoder
+
+RADS loads `.env.local` on startup. For OpenAI-backed localcoder testing, put the API key there:
+
+```sh
+OPENAI_API_KEY=sk-proj-your-test-key
+```
+
+The localcoder model settings live in `.localcoder-home/.localcoder/settings.json`. Both `.env.local` and `.localcoder-home/` are ignored by git; `.env.local.example` shows the expected shape.
+
 ## Shape
 
 Generated projects live under `rads-workspace/` and include:

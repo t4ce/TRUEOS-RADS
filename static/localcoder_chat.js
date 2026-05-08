@@ -2,11 +2,10 @@
   "use strict";
 
   var HOST_ID = "localcoder-chat-widget";
-  var STYLE_ID = "localcoder-chat-style";
   var STATUS_URL = "/api/localcoder/status";
   var CHAT_URL = "/api/localcoder/chat";
   var FALLBACK_MESSAGE =
-    "Localcoder is not available from this page yet. Any prompt you send stays in this transcript, and you can try again after the local service is running.";
+    "Localcoder is not available from this page yet. Prompts stay in this transcript until the local service is ready.";
 
   if (window.__localcoderChatLoaded) {
     return;
@@ -18,7 +17,6 @@
       window.setTimeout(callback, 0);
       return;
     }
-
     window.addEventListener("load", callback, { once: true });
   }
 
@@ -51,7 +49,19 @@
     );
   }
 
+  function titleCase(value) {
+    var text = normalizeText(value).trim();
+    if (!text) {
+      return "";
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
   function statusLabelFromPayload(payload) {
+    var settings;
+    var provider;
+    var model;
+
     if (!payload || typeof payload !== "object") {
       return "Localcoder ready";
     }
@@ -62,6 +72,13 @@
 
     if (typeof payload.message === "string" && payload.message.trim()) {
       return payload.message.trim();
+    }
+
+    settings = payload.settings || {};
+    provider = titleCase(settings.provider);
+    model = normalizeText(settings.model).trim();
+    if (provider && model) {
+      return provider + " / " + model;
     }
 
     if (typeof payload.model === "string" && payload.model.trim()) {
@@ -143,7 +160,7 @@
   function requestJson(url, options, timeoutMs) {
     var controller = typeof AbortController === "function" ? new AbortController() : null;
     var timeoutId = null;
-    var requestOptions = options || {};
+    var requestOptions = Object.assign({}, options || {});
 
     if (typeof fetch !== "function") {
       return Promise.reject(new Error("Fetch is not available in this browser"));
@@ -160,18 +177,27 @@
       .then(function (response) {
         var contentType = response.headers.get("content-type") || "";
 
-        if (!response.ok) {
-          var statusError = new Error("Request failed with status " + response.status);
-          statusError.status = response.status;
-          statusError.missingRoute = response.status === 404 || response.status === 405;
-          throw statusError;
-        }
-
         if (contentType.indexOf("application/json") !== -1) {
-          return response.json();
+          return response.json().then(function (payload) {
+            if (!response.ok) {
+              throw requestError(response, payload);
+            }
+            return payload;
+          });
         }
 
         return response.text().then(function (text) {
+          var payload;
+
+          if (!response.ok) {
+            try {
+              payload = text ? JSON.parse(text) : text;
+            } catch (error) {
+              payload = text;
+            }
+            throw requestError(response, payload);
+          }
+
           if (!text) {
             return {};
           }
@@ -190,12 +216,51 @@
       });
   }
 
+  function requestError(response, payload) {
+    var error = new Error("Request failed with status " + response.status);
+    error.status = response.status;
+    error.missingRoute = response.status === 404 || response.status === 405;
+    error.payload = payload;
+    return error;
+  }
+
+  function errorMessage(error) {
+    var payload = error && error.payload;
+    var text = "";
+    var stderrIndex;
+
+    if (payload && typeof payload === "object") {
+      text = normalizeText(payload.detail || payload.message || payload.error || "");
+    } else if (typeof payload === "string") {
+      text = normalizeText(payload);
+    } else if (error && error.name === "AbortError") {
+      text = "Localcoder request timed out.";
+    }
+
+    stderrIndex = text.indexOf("stderr=");
+    if (stderrIndex !== -1) {
+      text = text.slice(stderrIndex + "stderr=".length);
+    }
+    text = text.replace(/^❌\s*/gm, "").trim();
+
+    if (!hasVisibleText(text)) {
+      return isMissingRoute(error) ? "Localcoder unavailable" : "Localcoder request failed";
+    }
+
+    if (text.indexOf("missing OpenAI API key") !== -1) {
+      return "OpenAI API key missing. Add OPENAI_API_KEY to .env.local and restart RADS.";
+    }
+
+    return text;
+  }
+
   function buildWidget() {
     var existing = document.getElementById(HOST_ID);
     var host;
     var root;
     var style;
     var panel;
+    var dragHandle;
     var header;
     var titleWrap;
     var title;
@@ -203,12 +268,23 @@
     var statusDot;
     var statusText;
     var toggleButton;
+    var tabBar;
+    var chatTabButton;
+    var toolsTabButton;
+    var modelTabButton;
+    var content;
+    var chatPanel;
+    var toolsPanel;
+    var modelPanel;
     var transcript;
+    var toolList;
+    var modelDetails;
     var form;
     var input;
     var sendButton;
     var state = {
       available: false,
+      activeTab: "chat",
       collapsed: false,
       missingNoticeShown: false,
       sending: false
@@ -226,64 +302,87 @@
     root = host.attachShadow ? host.attachShadow({ mode: "open" }) : host;
 
     style = createElement("style");
-    style.id = STYLE_ID;
     style.textContent = [
       ":host {",
-      "  color-scheme: light dark;",
-      "  --lc-bg: #f9faf7;",
-      "  --lc-panel: #ffffff;",
-      "  --lc-ink: #16201b;",
-      "  --lc-muted: #5d6962;",
-      "  --lc-border: #cfd7d1;",
-      "  --lc-user: #e5f0ff;",
-      "  --lc-assistant: #edf7ee;",
-      "  --lc-system: #fff5d6;",
-      "  --lc-accent: #16685a;",
-      "  --lc-accent-strong: #0e4d43;",
-      "  --lc-offline: #a84832;",
-      "  --lc-wait: #9a6a13;",
-      "  --lc-shadow: 0 18px 45px rgba(18, 24, 20, 0.22);",
-      "  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
+      "  color-scheme: dark;",
+      "  --lc-bg: #111315;",
+      "  --lc-panel: #191d20;",
+      "  --lc-panel-2: #22272b;",
+      "  --lc-panel-3: #2a3035;",
+      "  --lc-line: #343c42;",
+      "  --lc-line-strong: #4b565f;",
+      "  --lc-text: #eef2f3;",
+      "  --lc-muted: #9faab0;",
+      "  --lc-muted-2: #c2cacf;",
+      "  --lc-accent: #31b77d;",
+      "  --lc-accent-soft: #163325;",
+      "  --lc-wait: #d6a833;",
+      "  --lc-offline: #ff6b6b;",
+      "  --lc-user: #18324b;",
+      "  --lc-assistant: #1d3128;",
+      "  --lc-system: #3a321a;",
+      "  --lc-shadow: 0 22px 55px rgba(0, 0, 0, 0.46);",
       "  position: fixed;",
       "  right: 18px;",
       "  bottom: 18px;",
       "  z-index: 2147483000;",
+      "  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
       "}",
       ":host, :host * { box-sizing: border-box; }",
+      "button, input, textarea { font: inherit; }",
       ".lc-panel {",
-      "  width: min(360px, calc(100vw - 32px));",
-      "  max-height: min(600px, calc(100vh - 36px));",
+      "  width: min(390px, calc(100vw - 32px));",
+      "  max-height: min(640px, calc(100vh - 36px));",
       "  display: grid;",
-      "  grid-template-rows: auto minmax(180px, 1fr) auto;",
+      "  grid-template-rows: auto auto auto minmax(190px, 1fr) auto;",
       "  overflow: hidden;",
-      "  color: var(--lc-ink);",
+      "  color: var(--lc-text);",
       "  background: var(--lc-panel);",
-      "  border: 1px solid var(--lc-border);",
+      "  border: 1px solid var(--lc-line);",
       "  border-radius: 8px;",
       "  box-shadow: var(--lc-shadow);",
       "}",
       ".lc-panel.is-collapsed {",
-      "  grid-template-rows: auto;",
+      "  grid-template-rows: auto auto;",
       "  width: min(310px, calc(100vw - 32px));",
       "}",
-      ".lc-panel.is-collapsed .lc-transcript,",
+      ".lc-panel.is-collapsed .lc-tabs,",
+      ".lc-panel.is-collapsed .lc-content,",
       ".lc-panel.is-collapsed .lc-form { display: none; }",
+      ".lc-drag {",
+      "  height: 18px;",
+      "  display: grid;",
+      "  place-items: center;",
+      "  cursor: grab;",
+      "  background: #141719;",
+      "  border-bottom: 1px solid var(--lc-line);",
+      "  touch-action: none;",
+      "}",
+      ".lc-drag::before {",
+      "  content: '';",
+      "  width: 42px;",
+      "  height: 4px;",
+      "  border-radius: 999px;",
+      "  background: var(--lc-line-strong);",
+      "}",
+      ".lc-drag:active { cursor: grabbing; }",
       ".lc-header {",
-      "  min-height: 56px;",
+      "  min-height: 54px;",
       "  display: flex;",
       "  align-items: center;",
       "  justify-content: space-between;",
       "  gap: 12px;",
       "  padding: 10px 12px;",
-      "  border-bottom: 1px solid var(--lc-border);",
-      "  background: var(--lc-bg);",
+      "  border-bottom: 1px solid var(--lc-line);",
+      "  background: #141719;",
       "}",
       ".lc-title-wrap { min-width: 0; }",
       ".lc-title {",
       "  margin: 0;",
       "  font-size: 14px;",
       "  line-height: 18px;",
-      "  font-weight: 700;",
+      "  font-weight: 900;",
+      "  letter-spacing: 0;",
       "}",
       ".lc-status {",
       "  display: flex;",
@@ -301,7 +400,7 @@
       "  flex: 0 0 8px;",
       "  border-radius: 50%;",
       "  background: var(--lc-wait);",
-      "  box-shadow: 0 0 0 3px rgba(154, 106, 19, 0.16);",
+      "  box-shadow: 0 0 0 3px rgba(214, 168, 51, 0.14);",
       "}",
       ".lc-status-text {",
       "  overflow: hidden;",
@@ -310,11 +409,11 @@
       "}",
       ".lc-panel.is-ready .lc-dot {",
       "  background: var(--lc-accent);",
-      "  box-shadow: 0 0 0 3px rgba(22, 104, 90, 0.16);",
+      "  box-shadow: 0 0 0 3px rgba(49, 183, 125, 0.15);",
       "}",
       ".lc-panel.is-offline .lc-dot {",
       "  background: var(--lc-offline);",
-      "  box-shadow: 0 0 0 3px rgba(168, 72, 50, 0.16);",
+      "  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.14);",
       "}",
       ".lc-toggle {",
       "  width: 34px;",
@@ -323,39 +422,78 @@
       "  display: inline-flex;",
       "  align-items: center;",
       "  justify-content: center;",
-      "  color: var(--lc-ink);",
-      "  background: transparent;",
-      "  border: 1px solid transparent;",
+      "  color: var(--lc-text);",
+      "  background: var(--lc-panel-2);",
+      "  border: 1px solid var(--lc-line);",
       "  border-radius: 6px;",
       "  cursor: pointer;",
       "  font-size: 18px;",
       "  line-height: 1;",
       "}",
       ".lc-toggle:hover, .lc-toggle:focus-visible {",
-      "  border-color: var(--lc-border);",
-      "  background: #eef3ef;",
+      "  border-color: var(--lc-line-strong);",
+      "  background: var(--lc-panel-3);",
       "  outline: none;",
       "}",
+      ".lc-tabs {",
+      "  display: grid;",
+      "  grid-template-columns: repeat(3, minmax(0, 1fr));",
+      "  gap: 4px;",
+      "  padding: 8px;",
+      "  border-bottom: 1px solid var(--lc-line);",
+      "  background: #151819;",
+      "}",
+      ".lc-tab {",
+      "  min-width: 0;",
+      "  min-height: 30px;",
+      "  padding: 0 8px;",
+      "  color: var(--lc-muted-2);",
+      "  background: var(--lc-panel-2);",
+      "  border: 1px solid var(--lc-line);",
+      "  border-radius: 6px;",
+      "  cursor: pointer;",
+      "  font-size: 12px;",
+      "  font-weight: 800;",
+      "}",
+      ".lc-tab:hover, .lc-tab:focus-visible {",
+      "  border-color: var(--lc-line-strong);",
+      "  background: var(--lc-panel-3);",
+      "  outline: none;",
+      "}",
+      ".lc-tab.is-active {",
+      "  color: #dcf8e7;",
+      "  background: var(--lc-accent-soft);",
+      "  border-color: #438465;",
+      "}",
+      ".lc-content {",
+      "  min-height: 0;",
+      "  background: #171b1e;",
+      "}",
+      ".lc-tab-panel {",
+      "  height: 100%;",
+      "  min-height: 0;",
+      "}",
+      ".lc-tab-panel[hidden] { display: none; }",
       ".lc-transcript {",
-      "  min-height: 180px;",
+      "  height: 100%;",
+      "  min-height: 190px;",
       "  max-height: 410px;",
       "  overflow-y: auto;",
       "  display: flex;",
       "  flex-direction: column;",
       "  gap: 8px;",
       "  padding: 12px;",
-      "  background: #fbfcfa;",
       "}",
       ".lc-message {",
       "  width: fit-content;",
       "  max-width: 92%;",
       "  padding: 8px 10px;",
-      "  border: 1px solid var(--lc-border);",
+      "  border: 1px solid var(--lc-line);",
       "  border-radius: 8px;",
-      "  color: var(--lc-ink);",
+      "  color: var(--lc-text);",
       "  background: var(--lc-assistant);",
       "  font-size: 13px;",
-      "  line-height: 1.4;",
+      "  line-height: 1.42;",
       "  white-space: pre-wrap;",
       "  overflow-wrap: anywhere;",
       "}",
@@ -367,34 +505,78 @@
       "  align-self: center;",
       "  width: 100%;",
       "  max-width: 100%;",
-      "  color: #4f3e08;",
+      "  color: #ffe7a0;",
       "  background: var(--lc-system);",
+      "}",
+      ".lc-tools, .lc-model {",
+      "  display: grid;",
+      "  gap: 8px;",
+      "  padding: 12px;",
+      "}",
+      ".lc-tools {",
+      "  grid-template-columns: repeat(2, minmax(0, 1fr));",
+      "}",
+      ".lc-tool {",
+      "  min-height: 34px;",
+      "  display: flex;",
+      "  align-items: center;",
+      "  gap: 8px;",
+      "  padding: 7px 9px;",
+      "  color: var(--lc-muted-2);",
+      "  background: var(--lc-panel-2);",
+      "  border: 1px solid var(--lc-line);",
+      "  border-radius: 6px;",
+      "  font-size: 12px;",
+      "}",
+      ".lc-tool input { accent-color: var(--lc-accent); }",
+      ".lc-kv {",
+      "  display: grid;",
+      "  grid-template-columns: 86px minmax(0, 1fr);",
+      "  gap: 8px;",
+      "  align-items: start;",
+      "  padding: 8px 9px;",
+      "  color: var(--lc-muted-2);",
+      "  background: var(--lc-panel-2);",
+      "  border: 1px solid var(--lc-line);",
+      "  border-radius: 6px;",
+      "  font-size: 12px;",
+      "  line-height: 1.35;",
+      "}",
+      ".lc-kv b {",
+      "  color: var(--lc-muted);",
+      "  font-weight: 800;",
+      "}",
+      ".lc-kv span {",
+      "  min-width: 0;",
+      "  overflow-wrap: anywhere;",
       "}",
       ".lc-form {",
       "  display: grid;",
       "  grid-template-columns: minmax(0, 1fr) auto;",
       "  gap: 8px;",
       "  padding: 10px;",
-      "  border-top: 1px solid var(--lc-border);",
-      "  background: var(--lc-bg);",
+      "  border-top: 1px solid var(--lc-line);",
+      "  background: #141719;",
       "}",
+      ".lc-form[hidden] { display: none; }",
       ".lc-input {",
       "  width: 100%;",
       "  min-height: 42px;",
       "  max-height: 150px;",
       "  resize: vertical;",
       "  padding: 9px 10px;",
-      "  color: var(--lc-ink);",
-      "  background: #ffffff;",
-      "  border: 1px solid var(--lc-border);",
+      "  color: var(--lc-text);",
+      "  background: #111315;",
+      "  border: 1px solid var(--lc-line);",
       "  border-radius: 6px;",
       "  font: inherit;",
       "  font-size: 13px;",
       "  line-height: 1.35;",
       "}",
+      ".lc-input::placeholder { color: #737f86; }",
       ".lc-input:focus {",
-      "  border-color: var(--lc-accent);",
-      "  outline: 2px solid rgba(22, 104, 90, 0.2);",
+      "  border-color: #438465;",
+      "  outline: 2px solid rgba(49, 183, 125, 0.18);",
       "  outline-offset: 1px;",
       "}",
       ".lc-send {",
@@ -402,48 +584,24 @@
       "  height: 42px;",
       "  align-self: end;",
       "  padding: 0 14px;",
-      "  color: #ffffff;",
+      "  color: #07110c;",
       "  background: var(--lc-accent);",
-      "  border: 1px solid var(--lc-accent-strong);",
+      "  border: 1px solid #60d39e;",
       "  border-radius: 6px;",
       "  font: inherit;",
       "  font-size: 13px;",
-      "  font-weight: 700;",
+      "  font-weight: 900;",
       "  cursor: pointer;",
       "}",
       ".lc-send:hover, .lc-send:focus-visible {",
-      "  background: var(--lc-accent-strong);",
+      "  background: #54c994;",
       "  outline: none;",
       "}",
       ".lc-send:disabled {",
       "  cursor: not-allowed;",
-      "  color: rgba(255, 255, 255, 0.78);",
-      "  background: #78948d;",
-      "  border-color: #78948d;",
-      "}",
-      "@media (prefers-color-scheme: dark) {",
-      "  :host {",
-      "    --lc-bg: #161b18;",
-      "    --lc-panel: #202721;",
-      "    --lc-ink: #f1f5ef;",
-      "    --lc-muted: #b8c4ba;",
-      "    --lc-border: #3b473f;",
-      "    --lc-user: #18324b;",
-      "    --lc-assistant: #1e3a31;",
-      "    --lc-system: #493d18;",
-      "    --lc-accent: #2ea88f;",
-      "    --lc-accent-strong: #55c6af;",
-      "    --lc-offline: #e07a62;",
-      "    --lc-wait: #d4a54b;",
-      "    --lc-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);",
-      "  }",
-      "  .lc-header, .lc-form { background: var(--lc-bg); }",
-      "  .lc-transcript { background: #171c19; }",
-      "  .lc-input { background: #111512; }",
-      "  .lc-message.is-system { color: #ffe7a0; }",
-      "  .lc-toggle:hover, .lc-toggle:focus-visible { background: #27302a; }",
-      "  .lc-send { color: #07110e; }",
-      "  .lc-send:disabled { color: rgba(7, 17, 14, 0.7); }",
+      "  color: rgba(7, 17, 12, 0.68);",
+      "  background: #5b806c;",
+      "  border-color: #5b806c;",
       "}",
       "@media (max-width: 520px) {",
       "  :host {",
@@ -460,11 +618,17 @@
       "}",
       "@media (prefers-reduced-motion: no-preference) {",
       "  .lc-panel { transition: width 140ms ease, max-height 140ms ease; }",
-      "  .lc-send, .lc-toggle { transition: background-color 120ms ease, border-color 120ms ease; }",
+      "  .lc-message { animation: lc-message-in 180ms ease both; }",
+      "  .lc-send, .lc-toggle, .lc-tab { transition: background-color 120ms ease, border-color 120ms ease; }",
+      "}",
+      "@keyframes lc-message-in {",
+      "  from { opacity: 0; transform: translateY(5px); }",
+      "  to { opacity: 1; transform: translateY(0); }",
       "}"
     ].join("\n");
 
     panel = createElement("div", "lc-panel is-waiting");
+    dragHandle = createElement("div", "lc-drag");
     header = createElement("div", "lc-header");
     titleWrap = createElement("div", "lc-title-wrap");
     title = createElement("h2", "lc-title", "Localcoder");
@@ -472,7 +636,17 @@
     statusDot = createElement("span", "lc-dot");
     statusText = createElement("span", "lc-status-text", "Checking local service");
     toggleButton = createElement("button", "lc-toggle", "-");
+    tabBar = createElement("div", "lc-tabs");
+    chatTabButton = createElement("button", "lc-tab is-active", "Chat");
+    toolsTabButton = createElement("button", "lc-tab", "Tools");
+    modelTabButton = createElement("button", "lc-tab", "Model");
+    content = createElement("div", "lc-content");
+    chatPanel = createElement("section", "lc-tab-panel");
+    toolsPanel = createElement("section", "lc-tab-panel");
+    modelPanel = createElement("section", "lc-tab-panel");
     transcript = createElement("div", "lc-transcript");
+    toolList = createElement("div", "lc-tools");
+    modelDetails = createElement("div", "lc-model");
     form = createElement("form", "lc-form");
     input = createElement("textarea", "lc-input");
     sendButton = createElement("button", "lc-send", "Send");
@@ -484,9 +658,17 @@
     toggleButton.type = "button";
     toggleButton.setAttribute("aria-label", "Collapse Localcoder chat");
     toggleButton.title = "Collapse";
+    chatTabButton.type = "button";
+    toolsTabButton.type = "button";
+    modelTabButton.type = "button";
+    chatTabButton.dataset.tab = "chat";
+    toolsTabButton.dataset.tab = "tools";
+    modelTabButton.dataset.tab = "model";
     transcript.setAttribute("aria-live", "polite");
     transcript.setAttribute("aria-label", "Localcoder transcript");
     transcript.setAttribute("role", "log");
+    toolsPanel.hidden = true;
+    modelPanel.hidden = true;
     input.placeholder = "Ask localcoder";
     input.rows = 2;
     input.autocomplete = "off";
@@ -498,9 +680,18 @@
     statusRow.append(statusDot, statusText);
     titleWrap.append(title, statusRow);
     header.append(titleWrap, toggleButton);
+    tabBar.append(chatTabButton, toolsTabButton, modelTabButton);
+    chatPanel.append(transcript);
+    toolsPanel.append(toolList);
+    modelPanel.append(modelDetails);
+    content.append(chatPanel, toolsPanel, modelPanel);
     form.append(input, sendButton);
-    panel.append(header, transcript, form);
+    panel.append(dragHandle, header, tabBar, content, form);
     root.append(style, panel);
+
+    renderTools();
+    renderModelDetails(null);
+    makeDraggable(host, dragHandle);
 
     function scrollTranscript() {
       transcript.scrollTop = transcript.scrollHeight;
@@ -554,12 +745,73 @@
         "aria-label",
         isCollapsed ? "Expand Localcoder chat" : "Collapse Localcoder chat"
       );
-      if (!isCollapsed) {
+      if (!isCollapsed && state.activeTab === "chat") {
         window.setTimeout(function () {
           input.focus();
           scrollTranscript();
         }, 0);
       }
+    }
+
+    function setTab(tab) {
+      state.activeTab = tab;
+      chatPanel.hidden = tab !== "chat";
+      toolsPanel.hidden = tab !== "tools";
+      modelPanel.hidden = tab !== "model";
+      form.hidden = tab !== "chat";
+      [chatTabButton, toolsTabButton, modelTabButton].forEach(function (button) {
+        button.classList.toggle("is-active", button.dataset.tab === tab);
+      });
+
+      if (tab === "chat") {
+        window.setTimeout(function () {
+          input.focus();
+          scrollTranscript();
+        }, 0);
+      }
+    }
+
+    function renderTools() {
+      ["Files", "Search", "Shell", "Web", "Git", "LSP", "Plan", "Skills"].forEach(function (tool) {
+        var label = createElement("label", "lc-tool");
+        var checkbox = createElement("input");
+        var name = createElement("span", "", tool);
+
+        checkbox.type = "checkbox";
+        checkbox.checked = true;
+        checkbox.disabled = true;
+        label.append(checkbox, name);
+        toolList.appendChild(label);
+      });
+    }
+
+    function renderModelDetails(payload) {
+      var settings = payload && payload.settings ? payload.settings : {};
+      var provider = titleCase(settings.provider) || "Unknown";
+      var model = normalizeText(settings.model).trim() || "Unknown";
+      var endpoint = normalizeText(settings.base_url).trim() || "Unknown";
+      var keyState = normalizeText(settings.api_key).trim() || "unknown";
+      var keyLabel = {
+        env: "OPENAI_API_KEY",
+        missing: "Missing",
+        not_required: "Not required",
+        settings: "Settings file",
+        unknown: "Unknown"
+      }[keyState] || titleCase(keyState);
+
+      modelDetails.textContent = "";
+      appendModelRow("Provider", provider);
+      appendModelRow("Model", model);
+      appendModelRow("Endpoint", endpoint);
+      appendModelRow("Key", keyLabel);
+    }
+
+    function appendModelRow(label, value) {
+      var row = createElement("div", "lc-kv");
+      var key = createElement("b", "", label);
+      var text = createElement("span", "", value);
+      row.append(key, text);
+      modelDetails.appendChild(row);
     }
 
     function refreshStatus() {
@@ -579,6 +831,7 @@
         .then(function (payload) {
           var label;
 
+          renderModelDetails(payload);
           state.available = isAvailableStatus(payload);
           if (state.available) {
             setStatus("ready", statusLabelFromPayload(payload));
@@ -593,6 +846,7 @@
         })
         .catch(function (error) {
           state.available = false;
+          renderModelDetails(null);
           setStatus(
             "offline",
             isMissingRoute(error) ? "Localcoder unavailable" : "Localcoder status unknown"
@@ -621,9 +875,9 @@
             Accept: "application/json",
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ prompt: prompt })
+          body: JSON.stringify({ prompt: prompt, timeout_ms: 120000 })
         },
-        60000
+        130000
       )
         .then(function (payload) {
           var text = normalizeText(extractChatText(payload));
@@ -638,16 +892,15 @@
           appendMessage("assistant", text);
         })
         .catch(function (error) {
+          var message = errorMessage(error);
+
           state.available = false;
-          setStatus(
-            "offline",
-            isMissingRoute(error) ? "Localcoder unavailable" : "Localcoder request failed"
-          );
-          showMissingNotice();
+          setStatus("offline", message);
+          appendMessage("system", message);
         })
         .finally(function () {
           setSending(false);
-          if (!state.collapsed) {
+          if (!state.collapsed && state.activeTab === "chat") {
             input.focus();
           }
         });
@@ -655,6 +908,12 @@
 
     toggleButton.addEventListener("click", function () {
       setCollapsed(!state.collapsed);
+    });
+
+    [chatTabButton, toolsTabButton, modelTabButton].forEach(function (button) {
+      button.addEventListener("click", function () {
+        setTab(button.dataset.tab);
+      });
     });
 
     input.addEventListener("input", updateSendState);
@@ -676,12 +935,55 @@
     window.LocalcoderChat = window.LocalcoderChat || {
       open: function () {
         setCollapsed(false);
+        setTab("chat");
       },
       close: function () {
         setCollapsed(true);
       },
       refreshStatus: refreshStatus
     };
+  }
+
+  function makeDraggable(host, handle) {
+    var dragging = false;
+    var offsetX = 0;
+    var offsetY = 0;
+
+    handle.addEventListener("pointerdown", function (event) {
+      var rect = host.getBoundingClientRect();
+      dragging = true;
+      offsetX = event.clientX - rect.left;
+      offsetY = event.clientY - rect.top;
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    handle.addEventListener("pointermove", function (event) {
+      var x;
+      var y;
+
+      if (!dragging) {
+        return;
+      }
+
+      x = Math.max(8, Math.min(window.innerWidth - host.offsetWidth - 8, event.clientX - offsetX));
+      y = Math.max(8, Math.min(window.innerHeight - host.offsetHeight - 8, event.clientY - offsetY));
+      host.style.left = x + "px";
+      host.style.top = y + "px";
+      host.style.right = "auto";
+      host.style.bottom = "auto";
+    });
+
+    handle.addEventListener("pointerup", function (event) {
+      dragging = false;
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+    });
+
+    handle.addEventListener("pointercancel", function () {
+      dragging = false;
+    });
   }
 
   onReady(buildWidget);

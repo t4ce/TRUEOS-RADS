@@ -18,6 +18,18 @@ cargo run
 
 Then open `http://127.0.0.1:7377`.
 
+For RADS development, use the nodemon-style wrapper:
+
+```sh
+scripts/dev.sh
+```
+
+It rebuilds and restarts the local RADS server when `src/`, `static/`,
+`Cargo.toml`, `Cargo.lock`, or `.env.local` changes. It intentionally does not
+watch generated projects under `rads-workspace/`, so IDE saves do not restart
+the IDE server. If an old server is still holding port `7377`, stop it first or
+launch with `RADS_DEV_KILL_STALE=1 scripts/dev.sh`.
+
 ## Localcoder
 
 RADS loads `.env.local` on startup. For OpenAI-backed localcoder testing, put the API key there:

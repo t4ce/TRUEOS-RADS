@@ -1,12 +1,13 @@
 app "Hello UI2" id "dev.trueos.hello-ui2" version "0.1.0"
 
 window MainWindow caption "Hello UI2" at 60,60 size 960x640 {
-  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
-  title-twemoji "💱"
-  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  decorations { mode: system, titlebar: true, bottom_bar: false, title_icon: true, toggle_composition: false, fork: false, close: true, minimize: false, restore: false, maximize: false, preserve_vm: false, resizable: false, resize_button: false, rotate_buttons: false, always_on_top: false }
+  window-options { resize_mode: both, scrollbars: none, vertical_scrollbar_side: left, horizontal_scrollbar_side: bottom, preserve_scale: true }
+  title-twemoji "⏲"
+  decoration-flags [titlebar, title-icon, close]
   layout absolute grid 8
   label titleLabel at 24,24 size 220x28 caption "Canvas workspace" props [role="heading"] events [ready -> on_title_label_ready]
-  button clearButton at 300,264 size 96x34 caption "Clear" props [variant="secondary"] events [click -> on_clear_button_click]
+  button clearButton at 24,264 size 96x34 caption "Clear" props [variant="secondary"] events [click -> on_clear_button_click]
   canvas drawingCanvas at 24,72 size 372x180 caption "" props [surface="software", background="#ffffff"] events [draw -> on_drawing_canvas_draw]
   button button1 at 576,312 size 120x34 caption "Okay" props [enabled="true", default="false", tab-stop="true"] events [click -> on_button1_click]
   checkbox checkbox1 at 36,84 size 160x30 caption "Check me" props [checked="false", enabled="true", tab-stop="true"] events [click -> on_checkbox1_click]
@@ -15,7 +16,8 @@ window MainWindow caption "Hello UI2" at 60,60 size 960x640 {
 }
 
 window Window2 caption "Window 2" at 124,124 size 680x420 {
-  decorations { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false }
-  decoration-flags [titlebar, close, minimize, maximize, resizable]
+  decorations { mode: system, titlebar: true, bottom_bar: true, title_icon: true, toggle_composition: true, fork: true, close: true, minimize: true, restore: true, maximize: true, preserve_vm: true, resizable: true, resize_button: true, rotate_buttons: false, always_on_top: false }
+  window-options { resize_mode: both, scrollbars: none, vertical_scrollbar_side: left, horizontal_scrollbar_side: bottom, preserve_scale: false }
+  decoration-flags [titlebar, bottom-bar, title-icon, toggle-composition, fork, close, minimize, restore, maximize, preserve-vm, resizable, resize-button]
   layout absolute grid 8
 }

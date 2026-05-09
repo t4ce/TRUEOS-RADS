@@ -92,7 +92,7 @@
       "id": "72f2ae65-f254-4680-a209-171db21d1d5f",
       "name": "MainWindow",
       "caption": "Hello UI2",
-      "title_twemoji": "💱",
+      "title_twemoji": "⏲",
       "geometry": {
         "x": 60,
         "y": 60,
@@ -100,11 +100,20 @@
         "h": 640
       },
       "decorations": {
+        "mode": "system",
         "titlebar": true,
+        "bottom_bar": false,
+        "title_icon": true,
+        "toggle_composition": false,
+        "fork": false,
         "close": true,
-        "minimize": true,
-        "maximize": true,
-        "resizable": true,
+        "minimize": false,
+        "restore": false,
+        "maximize": false,
+        "preserve_vm": false,
+        "resizable": false,
+        "resize_button": false,
+        "rotate_buttons": false,
         "always_on_top": false
       },
       "options": {
@@ -115,6 +124,8 @@
         "max_size": null,
         "resize_mode": "both",
         "scrollbars": "none",
+        "vertical_scrollbar_side": "left",
+        "horizontal_scrollbar_side": "bottom",
         "hit_test_visible": true,
         "preserve_scale": true
       },
@@ -153,7 +164,7 @@
           "name": "clearButton",
           "caption": "Clear",
           "geometry": {
-            "x": 300,
+            "x": 24,
             "y": 264,
             "w": 96,
             "h": 34
@@ -344,11 +355,20 @@
         "h": 420
       },
       "decorations": {
+        "mode": "system",
         "titlebar": true,
+        "bottom_bar": true,
+        "title_icon": true,
+        "toggle_composition": true,
+        "fork": true,
         "close": true,
         "minimize": true,
+        "restore": true,
         "maximize": true,
+        "preserve_vm": true,
         "resizable": true,
+        "resize_button": true,
+        "rotate_buttons": false,
         "always_on_top": false
       },
       "options": {
@@ -359,6 +379,8 @@
         "max_size": null,
         "resize_mode": "both",
         "scrollbars": "none",
+        "vertical_scrollbar_side": "left",
+        "horizontal_scrollbar_side": "bottom",
         "hit_test_visible": true,
         "preserve_scale": false
       },

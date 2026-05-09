@@ -119,13 +119,14 @@ async function optionalApi(path, options = {}, fallbackMessage = "") {
 
 async function init() {
   try {
-    const [palette, project, jobs, templates, twemoji, projects] = await Promise.all([
+    const [palette, project, jobs, templates, twemoji, projects, runtime] = await Promise.all([
       api("/api/palette"),
       api("/api/project"),
       optionalApi("/api/jobs", {}, "Job history unavailable until the backend is running."),
       probeApi("/api/templates"),
       probeApi("/api/assets/trueos-twemoji"),
       probeApi("/api/projects"),
+      probeApi("/api/runtime"),
     ]);
     state.palette = normalizePalette(palette);
     state.templates = normalizeTemplates(templates);
@@ -136,6 +137,7 @@ async function init() {
     ensurePaletteCategory();
     state.project = project;
     state.jobs = Array.isArray(jobs) ? jobs : [];
+    hydrateRuntimeState(runtime);
     if (project?.windows?.length) {
       state.selectedWindowId = project.windows[0].id;
     }
@@ -410,6 +412,11 @@ async function chooseControlGlyph(glyph) {
 
 async function runJob(kind) {
   if (!state.project) return;
+  if ((kind === "auto" || kind === "full-auto") && !state.fullAuto) {
+    state.logs.push("Full Auto is disabled; no background job queued.");
+    render();
+    return;
+  }
   try {
     const response = await api("/api/jobs", {
       method: "POST",
@@ -422,6 +429,20 @@ async function runJob(kind) {
     state.logs.push(`${labelJob(kind)} job could not be queued; ${shortError(error)}`);
   }
   render();
+}
+
+async function syncRuntimeFullAuto(fullAuto) {
+  const runtime = await optionalApi(
+    "/api/runtime",
+    { method: "POST", body: JSON.stringify({ full_auto: fullAuto, watch: fullAuto }) },
+    "Runtime toggle is local until the backend runtime route is available."
+  );
+  hydrateRuntimeState(runtime);
+}
+
+function hydrateRuntimeState(runtime) {
+  if (!runtime || typeof runtime !== "object") return;
+  state.fullAuto = Boolean(runtime.full_auto ?? runtime.fullAuto ?? state.fullAuto);
 }
 
 async function refreshJobs() {
@@ -1232,7 +1253,9 @@ function bindEvents() {
 
   app.querySelectorAll("[data-editor-tab]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.activeEditor = button.dataset.editorTab;
+      const nextEditor = button.dataset.editorTab;
+      if (nextEditor === state.activeEditor) return;
+      state.activeEditor = nextEditor;
       render();
     });
   });
@@ -1279,14 +1302,10 @@ function bindEvents() {
   app.querySelectorAll("[data-setting]").forEach((input) => {
     input.addEventListener("change", () => applySetting(input));
   });
-  app.querySelector("[data-toggle='fullAuto']")?.addEventListener("change", (event) => {
+  app.querySelector("[data-toggle='fullAuto']")?.addEventListener("change", async (event) => {
     state.fullAuto = event.target.checked;
     state.logs.push(`Full Auto ${state.fullAuto ? "enabled" : "disabled"}.`);
-    optionalApi(
-      "/api/runtime",
-      { method: "POST", body: JSON.stringify({ full_auto: state.fullAuto, watch: state.fullAuto }) },
-      "Runtime toggle is local until the backend runtime route is available."
-    );
+    await syncRuntimeFullAuto(state.fullAuto);
     if (state.fullAuto) runJob("auto");
     render();
   });
@@ -1559,11 +1578,12 @@ function twemojiSpriteStyle(glyph) {
   const cellH = Number(atlas.cell_h || 0);
   const gridW = Number(atlas.grid_w || 1);
   const gridH = Number(atlas.grid_h || 1);
-  const x = (slot % gridW) * cellW;
-  const y = Math.floor(slot / gridW) * cellH;
-  const atlasW = cellW * gridW;
-  const atlasH = cellH * gridH;
-  return `style="background-image:url('${escapeHtml(state.trueosTwemoji.atlasPng)}');background-size:${atlasW}px ${atlasH}px;background-position:-${x}px -${y}px"`;
+  if (!cellW || !cellH || !gridW || !gridH) return "";
+  const column = slot % gridW;
+  const row = Math.floor(slot / gridW);
+  const x = gridW > 1 ? (column / (gridW - 1)) * 100 : 0;
+  const y = gridH > 1 ? (row / (gridH - 1)) * 100 : 0;
+  return `style="background-image:url('${escapeHtml(state.trueosTwemoji.atlasPng)}');background-size:${gridW * 100}% ${gridH * 100}%;background-position:${x}% ${y}%"`;
 }
 
 function hydrateProjectEditors(template = null) {

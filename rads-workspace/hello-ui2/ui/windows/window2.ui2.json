@@ -9,11 +9,20 @@
     "h": 420
   },
   "decorations": {
+    "mode": "system",
     "titlebar": true,
+    "bottom_bar": true,
+    "title_icon": true,
+    "toggle_composition": true,
+    "fork": true,
     "close": true,
     "minimize": true,
+    "restore": true,
     "maximize": true,
+    "preserve_vm": true,
     "resizable": true,
+    "resize_button": true,
+    "rotate_buttons": false,
     "always_on_top": false
   },
   "options": {
@@ -24,6 +33,8 @@
     "max_size": null,
     "resize_mode": "both",
     "scrollbars": "none",
+    "vertical_scrollbar_side": "left",
+    "horizontal_scrollbar_side": "bottom",
     "hit_test_visible": true,
     "preserve_scale": false
   },

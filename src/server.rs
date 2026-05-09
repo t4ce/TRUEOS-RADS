@@ -940,6 +940,9 @@ async fn update_runtime(
 ) -> Result<Json<RuntimeResponse>, String> {
     if let Some(full_auto) = request.full_auto {
         state.full_auto.store(full_auto, Ordering::Relaxed);
+        if !full_auto && request.watch.is_none() {
+            set_watch(&state, false, None).await?;
+        }
     }
 
     if let Some(watch) = request.watch {
@@ -1399,6 +1402,11 @@ async fn run_job(
     let active = state.active.lock().await;
     let project = active.as_ref().ok_or("no active project")?;
     let requested_kind = request.kind.to_ascii_lowercase();
+    if matches!(requested_kind.as_str(), "auto" | "full-auto")
+        && !state.full_auto.load(Ordering::Relaxed)
+    {
+        return Err("full auto is disabled".to_string());
+    }
     let kind = match requested_kind.as_str() {
         "generate" => JobKind::Generate {
             project: project.root.clone(),

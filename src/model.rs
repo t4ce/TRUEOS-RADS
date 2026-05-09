@@ -141,12 +141,60 @@ pub struct Rect {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WindowDecorations {
+    pub mode: WindowDecorationMode,
     pub titlebar: bool,
+    pub bottom_bar: bool,
+    pub title_icon: bool,
+    pub toggle_composition: bool,
+    pub fork: bool,
     pub close: bool,
     pub minimize: bool,
+    pub restore: bool,
     pub maximize: bool,
+    pub preserve_vm: bool,
     pub resizable: bool,
+    pub resize_button: bool,
+    pub rotate_buttons: bool,
     pub always_on_top: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WindowDecorationMode {
+    System,
+    Client,
+    None,
+}
+
+impl WindowDecorationMode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::Client => "client",
+            Self::None => "none",
+        }
+    }
+
+    pub const fn vui2_variant(self) -> &'static str {
+        match self {
+            Self::System => "System",
+            Self::Client => "Client",
+            Self::None => "None",
+        }
+    }
+
+    pub fn options() -> Vec<String> {
+        ["system", "client", "none"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    }
+}
+
+impl Default for WindowDecorationMode {
+    fn default() -> Self {
+        Self::System
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -421,11 +469,23 @@ impl Ui2Control {
 impl WindowDecorations {
     pub fn to_flags(&self) -> Vec<&'static str> {
         [
+            (
+                self.mode != WindowDecorationMode::System,
+                self.mode.as_str(),
+            ),
             (self.titlebar, "titlebar"),
+            (self.bottom_bar, "bottom-bar"),
+            (self.title_icon, "title-icon"),
+            (self.toggle_composition, "toggle-composition"),
+            (self.fork, "fork"),
             (self.close, "close"),
             (self.minimize, "minimize"),
+            (self.restore, "restore"),
             (self.maximize, "maximize"),
+            (self.preserve_vm, "preserve-vm"),
             (self.resizable, "resizable"),
+            (self.resize_button, "resize-button"),
+            (self.rotate_buttons, "rotate-buttons"),
             (self.always_on_top, "always-on-top"),
         ]
         .into_iter()
@@ -435,12 +495,21 @@ impl WindowDecorations {
 
     pub fn to_ui2_literal(&self) -> String {
         format!(
-            "{{ titlebar: {}, close: {}, minimize: {}, maximize: {}, resizable: {}, always_on_top: {} }}",
+            "{{ mode: {}, titlebar: {}, bottom_bar: {}, title_icon: {}, toggle_composition: {}, fork: {}, close: {}, minimize: {}, restore: {}, maximize: {}, preserve_vm: {}, resizable: {}, resize_button: {}, rotate_buttons: {}, always_on_top: {} }}",
+            self.mode.as_str(),
             self.titlebar,
+            self.bottom_bar,
+            self.title_icon,
+            self.toggle_composition,
+            self.fork,
             self.close,
             self.minimize,
+            self.restore,
             self.maximize,
+            self.preserve_vm,
             self.resizable,
+            self.resize_button,
+            self.rotate_buttons,
             self.always_on_top
         )
     }
@@ -449,11 +518,20 @@ impl WindowDecorations {
 impl Default for WindowDecorations {
     fn default() -> Self {
         Self {
+            mode: WindowDecorationMode::System,
             titlebar: true,
+            bottom_bar: true,
+            title_icon: true,
+            toggle_composition: true,
+            fork: true,
             close: true,
             minimize: true,
+            restore: true,
             maximize: true,
+            preserve_vm: true,
             resizable: true,
+            resize_button: true,
+            rotate_buttons: false,
             always_on_top: false,
         }
     }

@@ -41,6 +41,8 @@ const state = {
   openProjectOpen: false,
   newProjectDraft: { name: "Hello UI2", templateId: "" },
   glyphPickerOpen: false,
+  glyphPickerTarget: null,
+  glyphPickerQuery: "",
   trueosTwemoji: { available: false, fontStack: "Twitter Color Emoji, Twemoji Mozilla, Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji", atlas: null, atlasPng: "" },
   assets: [],
   assetRoutesOnline: false,
@@ -389,8 +391,20 @@ async function chooseTitleGlyph(glyph) {
   if (!window) return;
   window.title_twemoji = glyph || null;
   state.glyphPickerOpen = false;
+  state.glyphPickerTarget = null;
   await persistWindow(window);
   scheduleAutoJob("window title glyph");
+  render();
+}
+
+async function chooseControlGlyph(glyph) {
+  const control = selectedControl();
+  if (!control || control.kind !== "button") return;
+  setControlProperty(control, "glyph", glyph || null);
+  state.glyphPickerOpen = false;
+  state.glyphPickerTarget = null;
+  await persistControl(control);
+  scheduleAutoJob("button glyph");
   render();
 }
 
@@ -841,22 +855,31 @@ function renderOpenProjectModal() {
 
 function renderGlyphPickerModal() {
   if (!state.glyphPickerOpen) return "";
-  const glyphs = titleGlyphChoices();
-  const active = selectedWindow()?.title_twemoji || "";
+  const glyphs = filteredTwemojiGlyphChoices();
+  const target = state.glyphPickerTarget || { kind: "window-title" };
+  const control = selectedControl();
+  const active = target.kind === "control-glyph"
+    ? controlProperty(control, "glyph")
+    : selectedWindow()?.title_twemoji || "";
+  const title = target.kind === "control-glyph" ? "Button Glyph" : "Title Glyph";
   return `
     <div class="modal-backdrop">
       <div class="glyph-modal">
         <div class="modal-head">
-          <strong>Title Glyph</strong>
+          <strong>${title}</strong>
           <button type="button" data-action="close-glyph-picker">Close</button>
         </div>
+        <label class="field glyph-search">
+          <span>Search</span>
+          <input data-glyph-search type="search" value="${escapeHtml(state.glyphPickerQuery)}" placeholder="emoji or hex, e.g. 1f4be" autofocus />
+        </label>
         <div class="glyph-grid">
-          <button class="${!active ? "active" : ""}" data-title-glyph="">None</button>
-          ${glyphs.map((glyph) => `
-            <button class="${glyph === active ? "active" : ""}" data-title-glyph="${escapeHtml(glyph)}">
+          <button class="${!active ? "active" : ""}" data-glyph="">None</button>
+          ${glyphs.length ? glyphs.map((glyph) => `
+            <button class="${glyph === active ? "active" : ""}" data-glyph="${escapeHtml(glyph)}">
               ${renderTwemojiGlyph(glyph, `U+${glyph.codePointAt(0).toString(16).toUpperCase()}`)}
             </button>
-          `).join("")}
+          `).join("") : `<span class="glyph-empty">No matching Twemoji glyphs</span>`}
         </div>
       </div>
     </div>`;
@@ -958,29 +981,62 @@ function renderWindow(window) {
   const rect = window.geometry;
   const scaledWidth = Math.round(rect.w * state.zoom);
   const scaledHeight = Math.round(rect.h * state.zoom);
-  const titlebar = window.decorations?.titlebar && state.showDecorations;
+  const decorations = normalizedDecorations(window.decorations);
+  const titlebar = decorations.titlebar && state.showDecorations;
+  const bottombar = decorations.bottom_bar && state.showDecorations;
+  const chromeHeight = (titlebar ? 34 : 0) + (bottombar ? 22 : 0);
   return `
     <div class="surface-wrap" style="width:${scaledWidth}px;height:${scaledHeight}px">
       <div class="window-frame" style="width:${rect.w}px;height:${rect.h}px;--zoom:${state.zoom}">
         ${titlebar ? renderTitlebar(window) : ""}
-        <div class="surface" data-window="${window.id}">
+        ${renderScrollbarPreview(window)}
+        <div class="surface" data-window="${window.id}" style="height:calc(100% - ${chromeHeight}px)">
           ${(window.controls || []).map(renderControl).join("")}
         </div>
+        ${bottombar ? renderBottombar(window) : ""}
       </div>
     </div>`;
 }
 
 function renderTitlebar(window) {
-  const d = window.decorations || {};
+  const d = normalizedDecorations(window.decorations);
   return `
     <div class="titlebar">
-      <span>${renderWindowTitleIcon(window)}${escapeHtml(window.caption)}</span>
+      <span>${d.title_icon ? renderWindowTitleIcon(window) : ""}${escapeHtml(window.caption)}</span>
       <div class="traffic">
-        ${d.minimize ? renderTwemojiGlyph(String.fromCodePoint(0x2796), "Minimize", "system-icon") : ""}
-        ${d.maximize ? renderTwemojiGlyph(String.fromCodePoint(0x23F9), "Maximize", "system-icon") : ""}
-        ${d.close ? renderTwemojiGlyph(String.fromCodePoint(0x2716), "Close", "system-icon") : ""}
+        ${d.toggle_composition ? renderWindowButton("🔄", "Toggle composition") : ""}
+        ${d.fork ? renderWindowButton("🔀", "Fork") : ""}
+        ${d.minimize ? renderWindowButton("➖", "Minimize") : ""}
+        ${d.restore ? renderWindowButton("◽", "Restore") : ""}
+        ${d.maximize ? renderWindowButton("⬜", "Maximize") : ""}
+        ${d.preserve_vm ? renderWindowButton("💾", "Preserve VM") : ""}
+        ${d.close ? renderWindowButton("❌", "Close") : ""}
       </div>
     </div>`;
+}
+
+function renderBottombar(window) {
+  const d = normalizedDecorations(window.decorations);
+  return `
+    <div class="bottombar">
+      <span></span>
+      ${d.resize_button && d.resizable ? renderWindowButton("↘", "Resize", "resize-window-button") : ""}
+      ${d.rotate_buttons ? renderWindowButton("↩", "Rotate left") + renderWindowButton("↪", "Rotate right") : ""}
+    </div>`;
+}
+
+function renderWindowButton(label, title, extraClass = "") {
+  return `<span class="window-button ${escapeHtml(extraClass)}" title="${escapeHtml(title)}">${renderTwemojiGlyph(label, title, "window-glyph")}</span>`;
+}
+
+function renderScrollbarPreview(window) {
+  const options = normalizedWindowOptions(window.options);
+  const showVertical = ["vertical", "both", "auto"].includes(options.scrollbars);
+  const showHorizontal = ["horizontal", "both", "auto"].includes(options.scrollbars);
+  if (!state.showDecorations || (!showVertical && !showHorizontal)) return "";
+  return `
+    ${showVertical ? `<i class="scrollbar-preview vertical ${options.vertical_scrollbar_side}"></i>` : ""}
+    ${showHorizontal ? `<i class="scrollbar-preview horizontal ${options.horizontal_scrollbar_side}"></i>` : ""}`;
 }
 
 function renderWindowTitleIcon(window) {
@@ -997,9 +1053,10 @@ function renderTwemojiGlyph(glyph, label = "Twemoji", className = "") {
 function renderControl(control) {
   const rect = control.geometry;
   const selected = control.id === state.selectedControlId ? " selected" : "";
+  const glyph = control.kind === "button" ? controlProperty(control, "glyph") : "";
   return `
     <div class="control ${control.kind}${selected}" data-control="${control.id}" style="left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px">
-      <span>${escapeHtml(control.caption)}</span>
+      <span>${glyph ? renderTwemojiGlyph(glyph, "Button glyph", "control-glyph") : ""}${escapeHtml(control.caption)}</span>
       <i class="resize-handle" data-resize="${control.id}"></i>
     </div>`;
 }
@@ -1010,7 +1067,8 @@ function renderInspector(window, control) {
   }
 
   if (!control) {
-    const d = window.decorations || {};
+    const d = normalizedDecorations(window.decorations);
+    const options = normalizedWindowOptions(window.options);
     return `
       <div class="inspector">
         <div class="inspector-target">
@@ -1030,13 +1088,28 @@ function renderInspector(window, control) {
           ${field("Width", "window.geometry.w", window.geometry.w, "number")}
           ${field("Height", "window.geometry.h", window.geometry.h, "number")}
         </div>
+        <h3>Window Options</h3>
+        ${selectField("Scrollbars", "window.options.scrollbars", options.scrollbars, ["none", "horizontal", "vertical", "both", "auto"])}
+        <div class="field-row">
+          ${selectField("Vertical Side", "window.options.vertical_scrollbar_side", options.vertical_scrollbar_side, ["left", "right"])}
+          ${selectField("Horizontal Side", "window.options.horizontal_scrollbar_side", options.horizontal_scrollbar_side, ["top", "bottom"])}
+        </div>
         <h3>Decorations</h3>
+        ${selectField("Mode", "window.decorations.mode", d.mode, ["system", "client", "none"])}
         <div class="checks">
           ${check("Titlebar", "window.decorations.titlebar", d.titlebar)}
+          ${check("Bottom Bar", "window.decorations.bottom_bar", d.bottom_bar)}
+          ${check("Title Icon", "window.decorations.title_icon", d.title_icon)}
+          ${check("Composition", "window.decorations.toggle_composition", d.toggle_composition)}
+          ${check("Fork", "window.decorations.fork", d.fork)}
           ${check("Close", "window.decorations.close", d.close)}
           ${check("Minimize", "window.decorations.minimize", d.minimize)}
+          ${check("Restore", "window.decorations.restore", d.restore)}
           ${check("Maximize", "window.decorations.maximize", d.maximize)}
           ${check("Resizable", "window.decorations.resizable", d.resizable)}
+          ${check("Resize Button", "window.decorations.resize_button", d.resize_button)}
+          ${check("Rotate", "window.decorations.rotate_buttons", d.rotate_buttons)}
+          ${check("Preserve VM", "window.decorations.preserve_vm", d.preserve_vm)}
           ${check("Always Top", "window.decorations.always_on_top", d.always_on_top)}
         </div>
       </div>`;
@@ -1058,6 +1131,12 @@ function renderInspector(window, control) {
         ${field("Width", "control.geometry.w", control.geometry.w, "number")}
         ${field("Height", "control.geometry.h", control.geometry.h, "number")}
       </div>
+      ${control.kind === "button" ? `
+        <label class="field">
+          <span>Glyph</span>
+          <button type="button" data-action="open-control-glyph-picker">${controlProperty(control, "glyph") ? renderTwemojiGlyph(controlProperty(control, "glyph"), "Selected button glyph") : "Choose"}</button>
+        </label>
+      ` : ""}
       <h3>Events</h3>
       ${(control.events || []).map((event, index) => field(`on ${event.event}`, `control.events.${index}.handler`, event.handler)).join("")}
       <div class="inspector-actions">
@@ -1116,15 +1195,36 @@ function bindEvents() {
   app.querySelector("[data-action='save-rust']")?.addEventListener("click", saveSelectedRustFile);
   app.querySelector("[data-action='add-window']")?.addEventListener("click", addWindow);
   app.querySelector("[data-action='open-glyph-picker']")?.addEventListener("click", () => {
+    state.glyphPickerTarget = { kind: "window-title" };
+    state.glyphPickerQuery = "";
+    state.glyphPickerOpen = true;
+    render();
+  });
+  app.querySelector("[data-action='open-control-glyph-picker']")?.addEventListener("click", () => {
+    state.glyphPickerTarget = { kind: "control-glyph", controlId: selectedControl()?.id || null };
+    state.glyphPickerQuery = "";
     state.glyphPickerOpen = true;
     render();
   });
   app.querySelector("[data-action='close-glyph-picker']")?.addEventListener("click", () => {
     state.glyphPickerOpen = false;
+    state.glyphPickerTarget = null;
+    state.glyphPickerQuery = "";
     render();
   });
-  app.querySelectorAll("[data-title-glyph]").forEach((button) => {
-    button.addEventListener("click", () => chooseTitleGlyph(button.dataset.titleGlyph));
+  app.querySelector("[data-glyph-search]")?.addEventListener("input", (event) => {
+    state.glyphPickerQuery = event.target.value;
+    render();
+  });
+  app.querySelectorAll("[data-glyph]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const glyph = button.dataset.glyph;
+      if (state.glyphPickerTarget?.kind === "control-glyph") {
+        chooseControlGlyph(glyph);
+      } else {
+        chooseTitleGlyph(glyph);
+      }
+    });
   });
   app.querySelector("[data-asset-import]")?.addEventListener("change", (event) => {
     importAssetFile(event.target.files?.[0]);
@@ -1425,12 +1525,28 @@ function isActiveProjectSummary(project) {
   return Boolean(project.slug && active.slug && project.slug === active.slug);
 }
 
-function titleGlyphChoices() {
+function allTwemojiGlyphChoices() {
+  const slots = state.trueosTwemoji.atlas?.slots || [];
+  if (Array.isArray(slots) && slots.length) {
+    return slots
+      .filter((codepoint) => Number.isInteger(codepoint) && codepoint > 0)
+      .map((codepoint) => String.fromCodePoint(codepoint));
+  }
   return [
     0x1F4A0, 0x26A1, 0x1F4BB, 0x1F4C1, 0x1F4BF, 0x1F524,
     0x23F5, 0x23F8, 0x23F9, 0x23EF, 0x23CF, 0x2796,
-    0x2797, 0x2716, 0x25FC, 0x25FB, 0x1F518, 0x1F4B1,
+    0x2797, 0x274C, 0x25FC, 0x25FB, 0x1F518, 0x1F4BE,
   ].map((codepoint) => String.fromCodePoint(codepoint));
+}
+
+function filteredTwemojiGlyphChoices() {
+  const query = state.glyphPickerQuery.trim().toLowerCase().replace(/^u\+/, "");
+  const glyphs = allTwemojiGlyphChoices();
+  if (!query) return glyphs;
+  return glyphs.filter((glyph) => {
+    const hex = glyph.codePointAt(0).toString(16).toLowerCase();
+    return glyph === query || hex.includes(query);
+  });
 }
 
 function twemojiSpriteStyle(glyph) {
@@ -1549,7 +1665,11 @@ function defaultHtmlForProject() {
 function controlToHtml(control) {
   const caption = escapeHtml(control.caption || control.name || labelKind(control.kind));
   const name = escapeHtml(control.name || control.kind);
-  if (control.kind === "button") return `<button data-control="${name}">${caption}</button>`;
+  const glyph = controlProperty(control, "glyph");
+  if (control.kind === "button") {
+    const icon = glyph ? `<span class="emoji" aria-hidden="true">${escapeHtml(glyph)}</span>` : "";
+    return `<button data-control="${name}">${icon}<span>${caption}</span></button>`;
+  }
   if (control.kind === "text-box") return `<input data-control="${name}" placeholder="${caption}" />`;
   if (control.kind === "check-box") return `<label data-control="${name}"><input type="checkbox" /> ${caption}</label>`;
   if (control.kind === "list-box") return `<select data-control="${name}"><option>${caption}</option></select>`;
@@ -1604,6 +1724,10 @@ select {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: #253238;
   color: #ffffff;
 }
@@ -2049,6 +2173,7 @@ pub const WINDOW_${index}_DECORATIONS: &str = "${escapeRustString(decorationsLit
   }).join("");
   const functions = windows.map((window, index) => {
     const geometry = window.geometry || { x: 80, y: 80, w: 720, h: 460 };
+    const decorationOptions = windowDecorationOptionsLiteral(window);
     return `pub fn create_window_${index}() -> Option<vui2::OwnedWindow> {
     let rect = vui2::Rect {
         x: ${Number(geometry.x) || 0},
@@ -2056,9 +2181,12 @@ pub const WINDOW_${index}_DECORATIONS: &str = "${escapeRustString(decorationsLit
         width: ${Number(geometry.w) || 720},
         height: ${Number(geometry.h) || 460},
     };
-    let window = vui2::OwnedWindow::create("${escapeRustString(window.caption || "TRUEOS UI2 app")}", rect)?;
+    let options = vui2::CreateOptions {
+        decorations: ${decorationOptions},
+        ..vui2::CreateOptions::default()
+    };
+    let window = vui2::OwnedWindow::create_with_options("${escapeRustString(window.caption || "TRUEOS UI2 app")}", rect, options)?;
     let id = window.id();
-    id.set_decorations(vui2::WindowDecorationMode::System);
     id.set_title("${escapeRustString(window.caption || "TRUEOS UI2 app")}");
     Some(window)
 }
@@ -2138,16 +2266,83 @@ function windowFileStem(window, index) {
 }
 
 function decorationsLiteral(decorations) {
-  const d = {
+  const d = normalizedDecorations(decorations);
+  return `{ mode: ${d.mode}, titlebar: ${Boolean(d.titlebar)}, bottom_bar: ${Boolean(d.bottom_bar)}, title_icon: ${Boolean(d.title_icon)}, toggle_composition: ${Boolean(d.toggle_composition)}, fork: ${Boolean(d.fork)}, close: ${Boolean(d.close)}, minimize: ${Boolean(d.minimize)}, restore: ${Boolean(d.restore)}, maximize: ${Boolean(d.maximize)}, preserve_vm: ${Boolean(d.preserve_vm)}, resizable: ${Boolean(d.resizable)}, resize_button: ${Boolean(d.resize_button)}, rotate_buttons: ${Boolean(d.rotate_buttons)}, always_on_top: ${Boolean(d.always_on_top)} }`;
+}
+
+function windowDecorationOptionsLiteral(window) {
+  const d = normalizedDecorations(window.decorations);
+  const options = normalizedWindowOptions(window.options);
+  return `vui2::WindowDecorationOptions {
+            mode: vui2::WindowDecorationMode::${rustVariant(d.mode)},
+            titlebar_visible: ${Boolean(d.titlebar)},
+            bottom_bar_visible: ${Boolean(d.bottom_bar)},
+            title_icon_visible: ${Boolean(d.title_icon)},
+            buttons: vui2::WindowDecorationButtons {
+                toggle_composition: ${Boolean(d.toggle_composition)},
+                fork: ${Boolean(d.fork)},
+                minimize: ${Boolean(d.minimize)},
+                restore: ${Boolean(d.restore)},
+                toggle_maximize: ${Boolean(d.maximize)},
+                preserve_vm: ${Boolean(d.preserve_vm)},
+                close: ${Boolean(d.close)},
+            },
+            resize_button_visible: ${Boolean(d.resizable && d.resize_button)},
+            rotate_buttons_visible: ${Boolean(d.rotate_buttons)},
+            vertical_scrollbar_visible: ${["vertical", "both", "auto"].includes(options.scrollbars)},
+            horizontal_scrollbar_visible: ${["horizontal", "both", "auto"].includes(options.scrollbars)},
+            vertical_scrollbar_side: vui2::VerticalScrollbarSide::${rustVariant(options.vertical_scrollbar_side)},
+            horizontal_scrollbar_side: vui2::HorizontalScrollbarSide::${rustVariant(options.horizontal_scrollbar_side)},
+            resize_mode: vui2::WindowResizeMode::Auto,
+            resize_maintain_aspect: false,
+            content_preserve_scale: ${Boolean(options.preserve_scale)},
+        }`;
+}
+
+function normalizedDecorations(decorations = {}) {
+  return {
+    mode: "system",
     titlebar: true,
+    bottom_bar: true,
+    title_icon: true,
+    toggle_composition: true,
+    fork: true,
     close: true,
     minimize: true,
+    restore: true,
     maximize: true,
+    preserve_vm: true,
     resizable: true,
+    resize_button: true,
+    rotate_buttons: false,
     always_on_top: false,
     ...decorations,
   };
-  return `{ titlebar: ${Boolean(d.titlebar)}, close: ${Boolean(d.close)}, minimize: ${Boolean(d.minimize)}, maximize: ${Boolean(d.maximize)}, resizable: ${Boolean(d.resizable)}, always_on_top: ${Boolean(d.always_on_top)} }`;
+}
+
+function normalizedWindowOptions(options = {}) {
+  return {
+    min_size: { width: 320, height: 240 },
+    max_size: null,
+    resize_mode: "both",
+    scrollbars: "none",
+    vertical_scrollbar_side: "left",
+    horizontal_scrollbar_side: "bottom",
+    hit_test_visible: true,
+    preserve_scale: false,
+    ...options,
+  };
+}
+
+function rustVariant(value) {
+  const normalized = String(value || "").replace(/_/g, "-").toLowerCase();
+  if (normalized === "bottom") return "Bottom";
+  if (normalized === "right") return "Right";
+  if (normalized === "top") return "Top";
+  if (normalized === "left") return "Left";
+  if (normalized === "client") return "Client";
+  if (normalized === "none") return "None";
+  return "System";
 }
 
 function projectStorageKey() {
@@ -2256,12 +2451,14 @@ function createLocalWindow(caption, index = 1, name = "") {
     caption,
     title_twemoji: null,
     geometry: { x: 80 + offset, y: 80 + offset, w: index === 1 ? 720 : 680, h: index === 1 ? 460 : 420 },
-    decorations: { titlebar: true, close: true, minimize: true, maximize: true, resizable: true, always_on_top: false },
+    decorations: normalizedDecorations(),
     options: {
       min_size: { width: 320, height: 240 },
       max_size: null,
       resize_mode: "both",
       scrollbars: "none",
+      vertical_scrollbar_side: "left",
+      horizontal_scrollbar_side: "bottom",
       hit_test_visible: true,
       preserve_scale: false,
     },
@@ -2298,11 +2495,38 @@ function getControl(id) {
   return selectedWindow()?.controls?.find((control) => control.id === id) || null;
 }
 
+function controlProperty(control, key) {
+  return (control?.properties || []).find((property) => property.key === key)?.value || "";
+}
+
+function setControlProperty(control, key, value) {
+  if (!control) return;
+  control.properties = Array.isArray(control.properties) ? control.properties : [];
+  const existing = control.properties.find((property) => property.key === key);
+  if (value == null || value === "") {
+    control.properties = control.properties.filter((property) => property.key !== key);
+  } else if (existing) {
+    existing.value = value;
+  } else {
+    control.properties.push({ key, value });
+  }
+}
+
 function field(label, path, value, type = "text") {
   return `
     <label class="field">
       <span>${escapeHtml(label)}</span>
       <input data-edit="${path}" type="${type}" value="${escapeHtml(String(value ?? ""))}" />
+    </label>`;
+}
+
+function selectField(label, path, value, options) {
+  return `
+    <label class="field">
+      <span>${escapeHtml(label)}</span>
+      <select data-edit="${path}">
+        ${options.map((option) => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(labelKind(option))}</option>`).join("")}
+      </select>
     </label>`;
 }
 

@@ -4,10 +4,14 @@ use crate::generator;
 use crate::jobs::{JobKind, JobManager, JobStage, JobStatus};
 use crate::localcoder;
 use crate::model::{
-    AppKind, EventBinding, Property, RadsProject, Rect, Ui2Control, Ui2Window, WindowDecorations,
+    AppKind, EventBinding, Property, RadsProject, Rect, Ui2Control, Ui2Window,
+    WindowDecorationMode, WindowDecorations,
 };
 use crate::project_templates;
-use crate::ui2_options::Ui2HtmlCssDescription;
+use crate::ui2_options::{
+    Ui2HorizontalScrollbarSide, Ui2HtmlCssDescription, Ui2ResizeMode, Ui2ScrollbarMode,
+    Ui2VerticalScrollbarSide,
+};
 use crate::watcher;
 use anyhow::Context;
 use axum::extract::{Path, Query, State};
@@ -218,7 +222,7 @@ pub async fn serve(workspace: PathBuf) -> anyhow::Result<()> {
             watched_project: None,
             watcher: None,
         })),
-        full_auto: Arc::new(AtomicBool::new(true)),
+        full_auto: Arc::new(AtomicBool::new(false)),
         project_events,
         project_file_watcher: Arc::new(Mutex::new(None)),
     };
@@ -1074,7 +1078,7 @@ fn apply_window_property(window: &mut Ui2Window, property: Property) -> Result<(
     match key.as_str() {
         "name" => window.name = property.value,
         "caption" => window.caption = property.value,
-        "title-twemoji" | "title-icon" | "twemoji" => {
+        "title-twemoji" | "twemoji" => {
             window.title_twemoji = (!property.value.trim().is_empty()).then_some(property.value)
         }
         "x" | "geometry.x" => window.geometry.x = parse_i32(&property.key, &property.value)?,
@@ -1088,20 +1092,71 @@ fn apply_window_property(window: &mut Ui2Window, property: Property) -> Result<(
         "titlebar" | "decorations.titlebar" => {
             window.decorations.titlebar = parse_bool(&property.key, &property.value)?
         }
+        "bottom-bar" | "decorations.bottom-bar" | "decorations.bottom_bar" => {
+            window.decorations.bottom_bar = parse_bool(&property.key, &property.value)?
+        }
+        "title-icon" | "app-icon" | "decorations.title-icon" | "decorations.app-icon" => {
+            window.decorations.title_icon = parse_bool(&property.key, &property.value)?
+        }
+        "toggle-composition" | "decorations.toggle-composition" => {
+            window.decorations.toggle_composition = parse_bool(&property.key, &property.value)?
+        }
+        "fork" | "decorations.fork" => {
+            window.decorations.fork = parse_bool(&property.key, &property.value)?
+        }
         "close" | "decorations.close" => {
             window.decorations.close = parse_bool(&property.key, &property.value)?
         }
         "minimize" | "decorations.minimize" => {
             window.decorations.minimize = parse_bool(&property.key, &property.value)?
         }
+        "restore" | "decorations.restore" => {
+            window.decorations.restore = parse_bool(&property.key, &property.value)?
+        }
         "maximize" | "decorations.maximize" => {
             window.decorations.maximize = parse_bool(&property.key, &property.value)?
+        }
+        "preserve-vm" | "decorations.preserve-vm" | "decorations.preserve_vm" => {
+            window.decorations.preserve_vm = parse_bool(&property.key, &property.value)?
         }
         "resizable" | "decorations.resizable" => {
             window.decorations.resizable = parse_bool(&property.key, &property.value)?
         }
+        "resize-button" | "decorations.resize-button" | "decorations.resize_button" => {
+            window.decorations.resize_button = parse_bool(&property.key, &property.value)?
+        }
+        "rotate-buttons" | "decorations.rotate-buttons" | "decorations.rotate_buttons" => {
+            window.decorations.rotate_buttons = parse_bool(&property.key, &property.value)?
+        }
         "always-on-top" | "decorations.always-on-top" => {
             window.decorations.always_on_top = parse_bool(&property.key, &property.value)?
+        }
+        "decoration-mode" | "decorations.mode" => {
+            window.decorations.mode = parse_decoration_mode(&property.key, &property.value)?
+        }
+        "resize-mode" | "options.resize-mode" | "options.resize_mode" => {
+            window.options.resize_mode = parse_resize_mode(&property.key, &property.value)?
+        }
+        "scrollbars" | "options.scrollbars" => {
+            window.options.scrollbars = parse_scrollbar_mode(&property.key, &property.value)?
+        }
+        "vertical-scrollbar-side"
+        | "options.vertical-scrollbar-side"
+        | "options.vertical_scrollbar_side" => {
+            window.options.vertical_scrollbar_side =
+                parse_vertical_scrollbar_side(&property.key, &property.value)?
+        }
+        "horizontal-scrollbar-side"
+        | "options.horizontal-scrollbar-side"
+        | "options.horizontal_scrollbar_side" => {
+            window.options.horizontal_scrollbar_side =
+                parse_horizontal_scrollbar_side(&property.key, &property.value)?
+        }
+        "hit-test-visible" | "options.hit-test-visible" | "options.hit_test_visible" => {
+            window.options.hit_test_visible = parse_bool(&property.key, &property.value)?
+        }
+        "preserve-scale" | "options.preserve-scale" | "options.preserve_scale" => {
+            window.options.preserve_scale = parse_bool(&property.key, &property.value)?
         }
         _ => return Err(format!("unknown window property `{}`", property.key)),
     }
@@ -1274,6 +1329,62 @@ fn parse_bool(key: &str, value: &str) -> Result<bool, String> {
         "true" | "1" | "yes" | "on" => Ok(true),
         "false" | "0" | "no" | "off" => Ok(false),
         _ => Err(format!("invalid boolean for `{key}`: {value}")),
+    }
+}
+
+fn parse_decoration_mode(key: &str, value: &str) -> Result<WindowDecorationMode, String> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "system" => Ok(WindowDecorationMode::System),
+        "client" => Ok(WindowDecorationMode::Client),
+        "none" => Ok(WindowDecorationMode::None),
+        _ => Err(format!("invalid decoration mode for `{key}`: {value}")),
+    }
+}
+
+fn parse_resize_mode(key: &str, value: &str) -> Result<Ui2ResizeMode, String> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "none" => Ok(Ui2ResizeMode::None),
+        "width" => Ok(Ui2ResizeMode::Width),
+        "height" => Ok(Ui2ResizeMode::Height),
+        "both" => Ok(Ui2ResizeMode::Both),
+        _ => Err(format!("invalid resize mode for `{key}`: {value}")),
+    }
+}
+
+fn parse_scrollbar_mode(key: &str, value: &str) -> Result<Ui2ScrollbarMode, String> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "none" => Ok(Ui2ScrollbarMode::None),
+        "horizontal" => Ok(Ui2ScrollbarMode::Horizontal),
+        "vertical" => Ok(Ui2ScrollbarMode::Vertical),
+        "both" => Ok(Ui2ScrollbarMode::Both),
+        "auto" => Ok(Ui2ScrollbarMode::Auto),
+        _ => Err(format!("invalid scrollbar mode for `{key}`: {value}")),
+    }
+}
+
+fn parse_vertical_scrollbar_side(
+    key: &str,
+    value: &str,
+) -> Result<Ui2VerticalScrollbarSide, String> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "left" => Ok(Ui2VerticalScrollbarSide::Left),
+        "right" => Ok(Ui2VerticalScrollbarSide::Right),
+        _ => Err(format!(
+            "invalid vertical scrollbar side for `{key}`: {value}"
+        )),
+    }
+}
+
+fn parse_horizontal_scrollbar_side(
+    key: &str,
+    value: &str,
+) -> Result<Ui2HorizontalScrollbarSide, String> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "top" => Ok(Ui2HorizontalScrollbarSide::Top),
+        "bottom" => Ok(Ui2HorizontalScrollbarSide::Bottom),
+        _ => Err(format!(
+            "invalid horizontal scrollbar side for `{key}`: {value}"
+        )),
     }
 }
 

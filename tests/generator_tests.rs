@@ -1,6 +1,6 @@
 use trueos_rads::generator::create_project;
 use trueos_rads::generator::write_project_files;
-use trueos_rads::model::{ProjectNameError, Ui2Window, validate_project_name};
+use trueos_rads::model::{ProjectNameError, Property, Ui2Window, validate_project_name};
 
 #[test]
 fn validates_project_names_before_generation() {
@@ -49,12 +49,26 @@ fn creates_rich_starter_project_files() {
 #[test]
 fn generated_layout_serializes_decorations_and_events() {
     let dir = tempfile::tempdir().unwrap();
-    let project = create_project(dir.path(), "Decor Test").unwrap();
+    let mut project = create_project(dir.path(), "Decor Test").unwrap();
+    project.windows[0]
+        .controls
+        .iter_mut()
+        .find(|control| control.name == "runButton")
+        .unwrap()
+        .properties
+        .push(Property {
+            key: "glyph".to_string(),
+            value: "💾".to_string(),
+        });
+    write_project_files(&project).unwrap();
 
     let layout = std::fs::read_to_string(project.root.join("ui/main.ui2")).unwrap();
-    assert!(layout.contains("decorations { titlebar: true"));
-    assert!(layout.contains("decoration-flags [titlebar, close, minimize, maximize, resizable]"));
+    assert!(layout.contains("decorations { mode: system, titlebar: true"));
+    assert!(layout.contains("window-options { resize_mode: both, scrollbars: none"));
+    assert!(layout.contains("decoration-flags [titlebar, bottom-bar, title-icon"));
+    assert!(layout.contains("close, minimize, restore, maximize"));
     assert!(layout.contains("button runButton"));
+    assert!(layout.contains("glyph=\"💾\""));
     assert!(layout.contains("click -> on_run_button_click"));
     assert!(layout.contains("textbox inputText"));
     assert!(layout.contains("change -> on_input_text_change"));
@@ -73,6 +87,8 @@ fn generated_rust_contains_ui_module_and_event_stubs() {
     assert!(main_rs.contains("mod ui;"));
     assert!(ui_rs.contains("pub const MAIN_LAYOUT"));
     assert!(ui_rs.contains("pub const MAIN_WINDOW_DECORATIONS"));
+    assert!(ui_rs.contains("vui2::WindowDecorationOptions"));
+    assert!(ui_rs.contains("bottom_bar_visible: true"));
     assert!(events_rs.contains("pub fn wire_main_window()"));
     assert!(events_rs.contains("pub fn on_run_button_click()"));
     assert!(events_rs.contains("pub fn on_input_text_change()"));

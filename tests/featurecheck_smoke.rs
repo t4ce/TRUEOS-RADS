@@ -289,7 +289,8 @@ fn public_featurecheck_apis_render_designer_and_ui2_shapes() {
     let layout = ui2_layout(&project);
     assert!(layout.contains("app \"Featurecheck Layout\""));
     assert!(layout.contains("window MainWindow"));
-    assert!(layout.contains("decoration-flags [titlebar, close, minimize, maximize, resizable]"));
+    assert!(layout.contains("decoration-flags [titlebar, bottom-bar, title-icon"));
+    assert!(layout.contains("close, minimize, restore, maximize"));
     assert!(layout.contains("textbox inputText"));
 }
 

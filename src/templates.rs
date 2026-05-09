@@ -133,6 +133,7 @@ pub fn create_all_windows() -> Vec<vui2::OwnedWindow> {{
 }
 
 fn window_create_function(index: usize, window: &Ui2Window) -> String {
+    let decoration_options = window_decoration_options_literal(window);
     format!(
         r#"pub fn create_window_{index}() -> Option<vui2::OwnedWindow> {{
     let rect = vui2::Rect {{
@@ -141,9 +142,12 @@ fn window_create_function(index: usize, window: &Ui2Window) -> String {
         width: {},
         height: {},
     }};
-    let window = vui2::OwnedWindow::create("{}", rect)?;
+    let options = vui2::CreateOptions {{
+        decorations: {},
+        ..vui2::CreateOptions::default()
+    }};
+    let window = vui2::OwnedWindow::create_with_options("{}", rect, options)?;
     let id = window.id();
-    id.set_decorations(vui2::WindowDecorationMode::System);
     id.set_title("{}");
     Some(window)
 }}
@@ -152,8 +156,58 @@ fn window_create_function(index: usize, window: &Ui2Window) -> String {
         window.geometry.y,
         window.geometry.w,
         window.geometry.h,
+        decoration_options,
         escape_rust_string(&window.caption),
         escape_rust_string(&window.caption)
+    )
+}
+
+fn window_decoration_options_literal(window: &Ui2Window) -> String {
+    let decorations = &window.decorations;
+    let options = &window.options;
+    format!(
+        r#"vui2::WindowDecorationOptions {{
+            mode: vui2::WindowDecorationMode::{},
+            titlebar_visible: {},
+            bottom_bar_visible: {},
+            title_icon_visible: {},
+            buttons: vui2::WindowDecorationButtons {{
+                toggle_composition: {},
+                fork: {},
+                minimize: {},
+                restore: {},
+                toggle_maximize: {},
+                preserve_vm: {},
+                close: {},
+            }},
+            resize_button_visible: {},
+            rotate_buttons_visible: {},
+            vertical_scrollbar_visible: {},
+            horizontal_scrollbar_visible: {},
+            vertical_scrollbar_side: vui2::VerticalScrollbarSide::{},
+            horizontal_scrollbar_side: vui2::HorizontalScrollbarSide::{},
+            resize_mode: vui2::WindowResizeMode::Auto,
+            resize_maintain_aspect: false,
+            content_preserve_scale: {},
+        }}"#,
+        decorations.mode.vui2_variant(),
+        decorations.titlebar,
+        decorations.bottom_bar,
+        decorations.title_icon,
+        decorations.toggle_composition,
+        decorations.fork,
+        decorations.minimize,
+        decorations.restore,
+        decorations.maximize,
+        decorations.preserve_vm,
+        decorations.close,
+        decorations.resizable && decorations.resize_button,
+        decorations.rotate_buttons,
+        options.scrollbars.vertical_visible(),
+        options.scrollbars.horizontal_visible(),
+        options.vertical_scrollbar_side.vui2_variant(),
+        options.horizontal_scrollbar_side.vui2_variant(),
+        options.preserve_scale,
     )
 }
 
@@ -336,6 +390,14 @@ pub fn window_to_ui2_snippet(window: &Ui2Window) -> String {
     body.push_str(&format!(
         "  decorations {}\n",
         window.decorations.to_ui2_literal()
+    ));
+    body.push_str(&format!(
+        "  window-options {{ resize_mode: {}, scrollbars: {}, vertical_scrollbar_side: {}, horizontal_scrollbar_side: {}, preserve_scale: {} }}\n",
+        window.options.resize_mode.as_str(),
+        window.options.scrollbars.as_str(),
+        window.options.vertical_scrollbar_side.as_str(),
+        window.options.horizontal_scrollbar_side.as_str(),
+        window.options.preserve_scale
     ));
     if let Some(icon) = window
         .title_twemoji

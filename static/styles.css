@@ -689,9 +689,62 @@ input {
 }
 
 .traffic span {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+}
+
+.window-button {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.bottombar {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 7px;
+  background: #253238;
+  color: #fff;
+}
+
+.scrollbar-preview {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(57, 83, 93, 0.38);
+  border: 1px solid rgba(223, 233, 236, 0.34);
+}
+
+.scrollbar-preview.vertical {
+  top: 36px;
+  bottom: 24px;
+  width: 10px;
+}
+
+.scrollbar-preview.vertical.left {
+  left: 2px;
+}
+
+.scrollbar-preview.vertical.right {
+  right: 2px;
+}
+
+.scrollbar-preview.horizontal {
+  left: 14px;
+  right: 14px;
+  height: 10px;
+}
+
+.scrollbar-preview.horizontal.top {
+  top: 36px;
+}
+
+.scrollbar-preview.horizontal.bottom {
+  bottom: 24px;
 }
 
 .twemoji-glyph {
@@ -711,6 +764,18 @@ input {
 .twemoji-glyph.title-icon {
   width: 18px;
   height: 18px;
+}
+
+.twemoji-glyph.window-glyph {
+  width: 18px;
+  height: 18px;
+  font-size: 16px;
+}
+
+.twemoji-glyph.control-glyph {
+  width: 18px;
+  height: 18px;
+  font-size: 16px;
 }
 
 .twemoji-glyph.system-icon {
@@ -743,6 +808,10 @@ input {
 }
 
 .control span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   max-width: 100%;
   overflow: hidden;
   padding: 0 8px;
@@ -1172,6 +1241,16 @@ input {
   width: 22px;
   height: 22px;
   font-size: 20px;
+}
+
+.glyph-search {
+  margin-bottom: 0;
+}
+
+.glyph-empty {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  padding: 18px 6px;
 }
 
 .console {

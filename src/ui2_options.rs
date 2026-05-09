@@ -82,11 +82,85 @@ impl Ui2ScrollbarMode {
             .map(str::to_string)
             .collect()
     }
+
+    pub const fn horizontal_visible(self) -> bool {
+        matches!(self, Self::Horizontal | Self::Both | Self::Auto)
+    }
+
+    pub const fn vertical_visible(self) -> bool {
+        matches!(self, Self::Vertical | Self::Both | Self::Auto)
+    }
 }
 
 impl Default for Ui2ScrollbarMode {
     fn default() -> Self {
         Self::None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Ui2VerticalScrollbarSide {
+    Left,
+    Right,
+}
+
+impl Ui2VerticalScrollbarSide {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
+
+    pub const fn vui2_variant(self) -> &'static str {
+        match self {
+            Self::Left => "Left",
+            Self::Right => "Right",
+        }
+    }
+
+    pub fn options() -> Vec<String> {
+        ["left", "right"].into_iter().map(str::to_string).collect()
+    }
+}
+
+impl Default for Ui2VerticalScrollbarSide {
+    fn default() -> Self {
+        Self::Left
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Ui2HorizontalScrollbarSide {
+    Top,
+    Bottom,
+}
+
+impl Ui2HorizontalScrollbarSide {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+        }
+    }
+
+    pub const fn vui2_variant(self) -> &'static str {
+        match self {
+            Self::Top => "Top",
+            Self::Bottom => "Bottom",
+        }
+    }
+
+    pub fn options() -> Vec<String> {
+        ["top", "bottom"].into_iter().map(str::to_string).collect()
+    }
+}
+
+impl Default for Ui2HorizontalScrollbarSide {
+    fn default() -> Self {
+        Self::Bottom
     }
 }
 
@@ -97,6 +171,8 @@ pub struct Ui2WindowOptions {
     pub max_size: Option<Ui2Size>,
     pub resize_mode: Ui2ResizeMode,
     pub scrollbars: Ui2ScrollbarMode,
+    pub vertical_scrollbar_side: Ui2VerticalScrollbarSide,
+    pub horizontal_scrollbar_side: Ui2HorizontalScrollbarSide,
     pub hit_test_visible: bool,
     pub preserve_scale: bool,
 }
@@ -108,6 +184,8 @@ impl Default for Ui2WindowOptions {
             max_size: None,
             resize_mode: Ui2ResizeMode::Both,
             scrollbars: Ui2ScrollbarMode::None,
+            vertical_scrollbar_side: Ui2VerticalScrollbarSide::Left,
+            horizontal_scrollbar_side: Ui2HorizontalScrollbarSide::Bottom,
             hit_test_visible: true,
             preserve_scale: false,
         }

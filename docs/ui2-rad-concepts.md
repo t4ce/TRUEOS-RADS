@@ -70,24 +70,43 @@ Window decorations are stored separately from geometry:
 
 ```json
 {
+  "mode": "system",
   "titlebar": true,
+  "bottom_bar": true,
+  "title_icon": true,
+  "toggle_composition": true,
+  "fork": true,
   "close": true,
   "minimize": true,
+  "restore": true,
   "maximize": true,
+  "preserve_vm": true,
   "resizable": true,
+  "resize_button": true,
+  "rotate_buttons": false,
   "always_on_top": false
+}
+```
+
+Scrollbar placement lives in the window options beside the scrollbar mode:
+
+```json
+{
+  "scrollbars": "both",
+  "vertical_scrollbar_side": "right",
+  "horizontal_scrollbar_side": "top"
 }
 ```
 
 The readable layout also serializes decoration flags, for example:
 
 ```text
-decoration-flags [titlebar, close, minimize, maximize, resizable]
+decoration-flags [titlebar, bottom-bar, title-icon, close, minimize, restore, maximize, resizable]
 ```
 
-The generated Rust currently maps window creation to `WindowDecorationMode::System`.
-The JSON keeps richer flags so future generators can target more decoration
-modes without changing the design file.
+The generated Rust maps these fields to `vui2::WindowDecorationOptions`, so RADS
+can emit top and bottom bar toggles, per-button visibility, title icon
+visibility, resize button visibility, and scrollbar side choices directly.
 
 ## Controls and Events
 
@@ -99,6 +118,17 @@ event is:
 - `select` for `list-box`
 - `draw` for `canvas`
 - `ready` for other controls
+
+Button controls may also carry an optional Twemoji glyph property. RADS renders
+that glyph through the same TRUEOS Twemoji atlas used by the window decoration
+preview and title glyph picker:
+
+```json
+{
+  "key": "glyph",
+  "value": "💾"
+}
+```
 
 Example:
 

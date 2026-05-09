@@ -7,7 +7,8 @@ use trueos_rads::designer::{
 use trueos_rads::generator::create_project;
 use trueos_rads::model::{Ui2Window, WindowDecorations};
 use trueos_rads::ui2_options::{
-    Ui2HtmlCssDescription, Ui2ResizeMode, Ui2ScrollbarMode, Ui2Size, Ui2WindowOptions,
+    Ui2HorizontalScrollbarSide, Ui2HtmlCssDescription, Ui2ResizeMode, Ui2ScrollbarMode, Ui2Size,
+    Ui2VerticalScrollbarSide, Ui2WindowOptions,
 };
 
 #[test]
@@ -54,6 +55,8 @@ fn window_options_and_ui_description_update_and_round_trip() {
         max_size: Some(Ui2Size::new(1280, 900)),
         resize_mode: Ui2ResizeMode::Width,
         scrollbars: Ui2ScrollbarMode::Auto,
+        vertical_scrollbar_side: Ui2VerticalScrollbarSide::Right,
+        horizontal_scrollbar_side: Ui2HorizontalScrollbarSide::Top,
         hit_test_visible: false,
         preserve_scale: true,
     };
@@ -83,6 +86,14 @@ fn window_options_and_ui_description_update_and_round_trip() {
     assert_eq!(value["options"]["max_size"]["height"].as_u64(), Some(900));
     assert_eq!(value["options"]["resize_mode"].as_str(), Some("width"));
     assert_eq!(value["options"]["scrollbars"].as_str(), Some("auto"));
+    assert_eq!(
+        value["options"]["vertical_scrollbar_side"].as_str(),
+        Some("right")
+    );
+    assert_eq!(
+        value["options"]["horizontal_scrollbar_side"].as_str(),
+        Some("top")
+    );
     assert_eq!(value["options"]["hit_test_visible"].as_bool(), Some(false));
     assert_eq!(value["options"]["preserve_scale"].as_bool(), Some(true));
     assert_eq!(
@@ -122,6 +133,8 @@ fn window_inspector_exposes_app_wanted_options_and_ui_description() {
     assert_eq!(field(options, "min-width").value, "320");
     assert_eq!(field(options, "max-width").value, "1024");
     assert_eq!(field(options, "scrollbars").value, "both");
+    assert_eq!(field(options, "vertical-scrollbar-side").value, "left");
+    assert_eq!(field(options, "horizontal-scrollbar-side").value, "bottom");
     assert_eq!(field(options, "preserve-scale").value, "true");
 
     match &field(options, "resize-mode").editor {

@@ -46,17 +46,11 @@ pub async fn watch_project(
             if !should_run_for_event(&event) || last_run.elapsed() < WATCH_DEBOUNCE {
                 continue;
             }
-            last_run = Instant::now();
 
-            let kind = if full_auto.load(Ordering::Relaxed) {
-                JobKind::FullAuto {
-                    project: project.clone(),
-                }
-            } else {
-                JobKind::Check {
-                    project: project.clone(),
-                }
+            let Some(kind) = watch_job_kind(&project, full_auto.load(Ordering::Relaxed)) else {
+                continue;
             };
+            last_run = Instant::now();
             let _ = jobs.spawn(kind).await;
         }
     });
@@ -116,6 +110,12 @@ fn should_run_for_event(event: &Event) -> bool {
     event.paths.iter().any(|path| !is_ignored_path(path))
 }
 
+fn watch_job_kind(project: &std::path::Path, full_auto: bool) -> Option<JobKind> {
+    full_auto.then(|| JobKind::FullAuto {
+        project: project.to_path_buf(),
+    })
+}
+
 fn project_file_event_kind(event: &Event) -> ProjectFileEventKind {
     match event.kind {
         EventKind::Create(_) => ProjectFileEventKind::Create,
@@ -141,4 +141,21 @@ fn is_ignored_path(path: &std::path::Path) -> bool {
             ".git" | "target" | "dist" | "package" | "node_modules" | ".DS_Store"
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn watcher_does_not_spawn_jobs_when_full_auto_is_disabled() {
+        assert!(watch_job_kind(Path::new("/tmp/project"), false).is_none());
+    }
+
+    #[test]
+    fn watcher_spawns_full_auto_jobs_only_when_enabled() {
+        let kind = watch_job_kind(Path::new("/tmp/project"), true).unwrap();
+        assert!(matches!(kind, JobKind::FullAuto { .. }));
+    }
 }

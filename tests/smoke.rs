@@ -58,8 +58,10 @@ fn starter_generation_writes_expected_contract_files() {
     assert_eq!(stored_window.controls.len(), 3);
 
     let layout = fs::read_to_string(project.root.join("ui/main.ui2")).unwrap();
-    assert!(layout.contains("decorations { titlebar: true"));
-    assert!(layout.contains("decoration-flags [titlebar, close, minimize, maximize, resizable]"));
+    assert!(layout.contains("decorations { mode: system, titlebar: true"));
+    assert!(layout.contains("window-options { resize_mode: both, scrollbars: none"));
+    assert!(layout.contains("decoration-flags [titlebar, bottom-bar, title-icon"));
+    assert!(layout.contains("close, minimize, restore, maximize"));
     assert!(layout.contains("textbox inputText"));
     assert!(layout.contains("change -> on_input_text_change"));
 }
@@ -125,6 +127,40 @@ fn designer_adds_palette_control_with_snap_and_inspector_data() {
             .sections
             .iter()
             .any(|section| section.id == "events")
+    );
+}
+
+#[test]
+fn button_inspector_exposes_optional_twemoji_glyph_property() {
+    let mut window = Ui2Window::main_window("Glyph Button");
+    let window_id = window.id;
+    let control_id = add_control(
+        &mut window,
+        AddControlRequest {
+            window_id,
+            kind: ControlKind::Button,
+            x: 24,
+            y: 24,
+            id: None,
+            name: None,
+            caption: Some("Save".to_string()),
+            snap: None,
+        },
+    )
+    .unwrap();
+
+    let inspector = object_inspector_for_selection(&window, Some(control_id));
+    let properties = inspector
+        .sections
+        .iter()
+        .find(|section| section.id == "properties")
+        .unwrap();
+
+    assert!(
+        properties
+            .fields
+            .iter()
+            .any(|field| field.key == "glyph" && field.value.is_empty())
     );
 }
 

@@ -63,8 +63,8 @@
       "name": "clearButton",
       "caption": "Clear",
       "geometry": {
-        "x": 812,
-        "y": 22,
+        "x": 300,
+        "y": 264,
         "w": 96,
         "h": 34
       },
@@ -89,8 +89,8 @@
       "geometry": {
         "x": 24,
         "y": 72,
-        "w": 884,
-        "h": 520
+        "w": 372,
+        "h": 180
       },
       "properties": [
         {
@@ -115,8 +115,8 @@
       "name": "button1",
       "caption": "Okay",
       "geometry": {
-        "x": 360,
-        "y": 24,
+        "x": 576,
+        "y": 312,
         "w": 120,
         "h": 34
       },
@@ -147,8 +147,8 @@
       "name": "checkbox1",
       "caption": "Check me",
       "geometry": {
-        "x": 576,
-        "y": 216,
+        "x": 36,
+        "y": 84,
         "w": 160,
         "h": 30
       },
@@ -215,8 +215,8 @@
       "name": "label1",
       "caption": "Label",
       "geometry": {
-        "x": 180,
-        "y": 288,
+        "x": 576,
+        "y": 228,
         "w": 160,
         "h": 24
       },

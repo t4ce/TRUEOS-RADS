@@ -1,9 +1,10 @@
 use crate::model::{
-    ControlKind, EventBinding, Property, Rect, Ui2Control, Ui2Window, WindowDecorations,
-    event_handler_name,
+    ControlKind, EventBinding, Property, Rect, Ui2Control, Ui2Window, WindowDecorationMode,
+    WindowDecorations, event_handler_name,
 };
 use crate::ui2_options::{
-    Ui2HtmlCssDescription, Ui2ResizeMode, Ui2ScrollbarMode, Ui2Size, Ui2WindowOptions,
+    Ui2HorizontalScrollbarSide, Ui2HtmlCssDescription, Ui2ResizeMode, Ui2ScrollbarMode, Ui2Size,
+    Ui2VerticalScrollbarSide, Ui2WindowOptions,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -150,6 +151,8 @@ pub struct Ui2WindowInspectorOptions {
     pub max_size: Option<Ui2Size>,
     pub resize_mode: Ui2ResizeMode,
     pub scrollbars: Ui2ScrollbarMode,
+    pub vertical_scrollbar_side: Ui2VerticalScrollbarSide,
+    pub horizontal_scrollbar_side: Ui2HorizontalScrollbarSide,
     pub hit_test_visible: bool,
     pub preserve_scale: bool,
     pub decoration_flags: Vec<String>,
@@ -163,6 +166,8 @@ impl Ui2WindowInspectorOptions {
             max_size: window.options.max_size,
             resize_mode: window.options.resize_mode,
             scrollbars: window.options.scrollbars,
+            vertical_scrollbar_side: window.options.vertical_scrollbar_side,
+            horizontal_scrollbar_side: window.options.horizontal_scrollbar_side,
             hit_test_visible: window.options.hit_test_visible,
             preserve_scale: window.options.preserve_scale,
             decoration_flags: window
@@ -184,6 +189,8 @@ impl Default for Ui2WindowInspectorOptions {
             max_size: options.max_size,
             resize_mode: options.resize_mode,
             scrollbars: options.scrollbars,
+            vertical_scrollbar_side: options.vertical_scrollbar_side,
+            horizontal_scrollbar_side: options.horizontal_scrollbar_side,
             hit_test_visible: options.hit_test_visible,
             preserve_scale: options.preserve_scale,
             decoration_flags: WindowDecorations::default()
@@ -640,10 +647,30 @@ pub fn object_inspector_for_window(window: &Ui2Window) -> ObjectInspectorData {
                         true,
                     ),
                     bool_field("titlebar", "Titlebar", window.decorations.titlebar),
+                    bool_field("bottom-bar", "Bottom bar", window.decorations.bottom_bar),
+                    bool_field("title-icon", "Title icon", window.decorations.title_icon),
+                    bool_field(
+                        "toggle-composition",
+                        "Toggle composition",
+                        window.decorations.toggle_composition,
+                    ),
+                    bool_field("fork", "Fork", window.decorations.fork),
                     bool_field("close", "Close", window.decorations.close),
                     bool_field("minimize", "Minimize", window.decorations.minimize),
+                    bool_field("restore", "Restore", window.decorations.restore),
                     bool_field("maximize", "Maximize", window.decorations.maximize),
+                    bool_field("preserve-vm", "Preserve VM", window.decorations.preserve_vm),
                     bool_field("resizable", "Resizable", window.decorations.resizable),
+                    bool_field(
+                        "resize-button",
+                        "Resize button",
+                        window.decorations.resize_button,
+                    ),
+                    bool_field(
+                        "rotate-buttons",
+                        "Rotate buttons",
+                        window.decorations.rotate_buttons,
+                    ),
                     bool_field(
                         "always-on-top",
                         "Always on top",
@@ -709,17 +736,7 @@ pub fn object_inspector_for_control(window_id: Uuid, control: &Ui2Control) -> Ob
             ObjectInspectorSection {
                 id: "properties".to_string(),
                 label: "Properties".to_string(),
-                fields: control
-                    .properties
-                    .iter()
-                    .map(|property| ObjectInspectorField {
-                        key: property.key.clone(),
-                        label: property_label(&property.key),
-                        value: property.value.clone(),
-                        editor: property_editor(&property.key, &property.value),
-                        read_only: false,
-                    })
-                    .collect(),
+                fields: control_property_fields(control),
             },
             ObjectInspectorSection {
                 id: "events".to_string(),
@@ -739,6 +756,37 @@ pub fn object_inspector_for_control(window_id: Uuid, control: &Ui2Control) -> Ob
             },
         ],
     }
+}
+
+fn control_property_fields(control: &Ui2Control) -> Vec<ObjectInspectorField> {
+    let mut fields = control
+        .properties
+        .iter()
+        .map(|property| ObjectInspectorField {
+            key: property.key.clone(),
+            label: property_label(&property.key),
+            value: property.value.clone(),
+            editor: property_editor(&property.key, &property.value),
+            read_only: false,
+        })
+        .collect::<Vec<_>>();
+
+    if matches!(control.kind, ControlKind::Button)
+        && !control
+            .properties
+            .iter()
+            .any(|property| property.key == "glyph")
+    {
+        fields.push(ObjectInspectorField {
+            key: "glyph".to_string(),
+            label: "Glyph".to_string(),
+            value: String::new(),
+            editor: ObjectInspectorEditor::Text,
+            read_only: false,
+        });
+    }
+
+    fields
 }
 
 pub fn default_properties(kind: &ControlKind) -> Vec<Property> {
@@ -910,6 +958,24 @@ fn window_option_fields(window: &Ui2Window) -> Vec<ObjectInspectorField> {
             "Scrollbars",
             options.scrollbars.as_str(),
             Ui2ScrollbarMode::options(),
+        ),
+        select_field(
+            "vertical-scrollbar-side",
+            "Vertical side",
+            options.vertical_scrollbar_side.as_str(),
+            Ui2VerticalScrollbarSide::options(),
+        ),
+        select_field(
+            "horizontal-scrollbar-side",
+            "Horizontal side",
+            options.horizontal_scrollbar_side.as_str(),
+            Ui2HorizontalScrollbarSide::options(),
+        ),
+        select_field(
+            "decoration-mode",
+            "Decoration mode",
+            window.decorations.mode.as_str(),
+            WindowDecorationMode::options(),
         ),
         bool_field(
             "hit-test-visible",
